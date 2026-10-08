@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend_simpasi/screens/onboarding.dart';
+import '../onboarding/onboarding1.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -31,7 +31,7 @@ class _SplashScreenState extends State<SplashScreen>
   static const String _imgFace = 'start-face';
   static const String _imgForkSpoon = 'start-face-forkspoon';
   static const String _imgWink = 'start-wink';
-  static const String _imgMelet = 'start-wink-melet';
+  static const String _imgMelet = 'start-melet';
   static const String _imgFinal = 'start-final';
 
   @override
@@ -47,7 +47,7 @@ class _SplashScreenState extends State<SplashScreen>
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 500),
-          pageBuilder: (_, _, _) => const Onboarding(),
+          pageBuilder: (_, _, _) => const OnboardingPage(),
           transitionsBuilder: (_, anim, _, child) =>
               FadeTransition(opacity: anim, child: child),
         ),
