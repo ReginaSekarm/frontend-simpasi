@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../onboarding/onboarding1.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -25,6 +24,15 @@ class _SplashScreenState extends State<SplashScreen>
   static const double _wUtensil = 261; // forkspoon & wink
   static const double _wMelet = 387; // melet (file asli 892 px)
   static const double _wFinal = 387;
+
+  // Nama file gambar (tanpa .png). Kalau nama file aslimu beda,
+  // cukup ubah di sini saja.
+  static const String _imgDot = 'start-dot1';
+  static const String _imgFace = 'start-face';
+  static const String _imgForkSpoon = 'start-face-forkspoon';
+  static const String _imgWink = 'start-wink';
+  static const String _imgMelet = 'start-melet';
+  static const String _imgFinal = 'start-final';
 
   @override
   void initState() {
@@ -60,12 +68,12 @@ class _SplashScreenState extends State<SplashScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     for (final n in [
-      'start-dot1',
-      'start-face',
-      'start-face-forkspoon',
-      'start-wink',
-      'start-melet',
-      'start-final',
+      _imgDot,
+      _imgFace,
+      _imgForkSpoon,
+      _imgWink,
+      _imgMelet,
+      _imgFinal,
     ]) {
       precacheImage(AssetImage('assets/images/$n.png'), context);
     }
@@ -131,7 +139,7 @@ class _SplashScreenState extends State<SplashScreen>
                               opacity: (1 - face).clamp(0.0, 1.0),
                               child: Transform.translate(
                                 offset: Offset(0, dotDy),
-                                child: _img('start-dot1', _wDot),
+                                child: _img(_imgDot, _wDot),
                               ),
                             ),
                           ),
@@ -145,7 +153,7 @@ class _SplashScreenState extends State<SplashScreen>
                               child: Transform.scale(
                                 scale: 0.3 +
                                     0.7 * Curves.easeOutBack.transform(face),
-                                child: _img('start-face', _wFace),
+                                child: _img(_imgFace, _wFace),
                               ),
                             ),
                           ),
@@ -156,7 +164,7 @@ class _SplashScreenState extends State<SplashScreen>
                             top: 20,
                             child: Opacity(
                               opacity: utensil,
-                              child: _img('start-face-forkspoon', _wUtensil),
+                              child: _img(_imgForkSpoon, _wUtensil),
                             ),
                           ),
 
@@ -166,7 +174,7 @@ class _SplashScreenState extends State<SplashScreen>
                             top: 20,
                             child: Opacity(
                               opacity: wink,
-                              child: _img('start-wink', _wUtensil),
+                              child: _img(_imgWink, _wUtensil),
                             ),
                           ),
 
@@ -176,7 +184,7 @@ class _SplashScreenState extends State<SplashScreen>
                             top: -1,
                             child: Opacity(
                               opacity: winkmelet,
-                              child: _img('start-wink-melet', _wMelet),
+                              child: _img(_imgMelet, _wMelet),
                             ),
                           ),
                         ],
@@ -205,7 +213,7 @@ class _SplashScreenState extends State<SplashScreen>
                           top: -75,
                           child: Opacity(
                             opacity: fin,
-                            child: _img('start-final', _wFinal),
+                            child: _img(_imgFinal, _wFinal),
                           ),
                         ),
                       ],

@@ -15,6 +15,9 @@ class BottomNav extends StatelessWidget {
   static const Color _red = Color(0xFFD45060);
   static const Color _divider = Color(0xFFD9D9D9);
 
+  // Gambar icon tengah. Kalau mau ganti gambar, ubah di sini saja.
+  static const String _centerImage = 'assets/images/start-melet-buka.png';
+
   @override
   Widget build(BuildContext context) {
     return Positioned(
@@ -121,7 +124,7 @@ class BottomNav extends StatelessWidget {
     );
   }
 
-  // ================= TOMBOL TENGAH (logo 69.85 x 36.35) =================
+  // ================= TOMBOL TENGAH (gambar bayi + garpu sendok) =================
   Widget _centerItem(int index) {
     final active = currentIndex == index;
 
@@ -133,7 +136,7 @@ class BottomNav extends StatelessWidget {
           child: Container(
             width: 65,
             height: 50,
-            clipBehavior: Clip.none,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             decoration: BoxDecoration(
               color: active ? Colors.white : Colors.transparent,
               borderRadius: BorderRadius.circular(30),
@@ -148,19 +151,11 @@ class BottomNav extends StatelessWidget {
                     ]
                   : null,
             ),
-                        child: Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.center,
-              children: [
-                Image.asset(
-                  'assets/images/start-wink-melet.png',
-                  width: 69.85,
-                  height: 36.35,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) =>
-                      const Icon(Icons.child_care, color: _red, size: 28),
-                ),
-              ],
+            child: Image.asset(
+              _centerImage,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) =>
+                  const Icon(Icons.child_care, color: _red, size: 28),
             ),
           ),
         ),
