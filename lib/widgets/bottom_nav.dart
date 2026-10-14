@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../utils/responsive.dart';
+
 class BottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -20,37 +22,47 @@ class BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Supaya tidak tertutup home bar iPhone / tombol gestur Android
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
     return Positioned(
-      left: 12,
-      right: 12,
-      bottom: 20,
+      left: context.w(12),
+      right: context.w(12),
+      bottom: context.w(20) + bottomInset,
       child: Container(
-        height: 60,
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+        height: context.w(60),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.w(5),
+          vertical: context.w(3),
+        ),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.85),
           border: Border.all(color: const Color(0x17AAA6A6)),
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(context.w(30)),
         ),
         child: Row(
           children: [
             _popupItem(
+              context,
               index: 0,
               label: 'Koleksi',
               asset: 'assets/icons/albums.svg',
             ),
             _popupItem(
+              context,
               index: 1,
               label: 'Menu',
               asset: 'assets/icons/bowl.svg',
             ),
-            _centerItem(2),
+            _centerItem(context, 2),
             _popupItem(
+              context,
               index: 3,
               label: 'Riwayat',
               asset: 'assets/icons/riwayat.svg',
             ),
             _popupItem(
+              context,
               index: 4,
               label: 'Profil',
               asset: 'assets/icons/profil.svg',
@@ -61,8 +73,9 @@ class BottomNav extends StatelessWidget {
     );
   }
 
-  // ================= ITEM POPUP (icon SVG Figma 30x30) =================
-  Widget _popupItem({
+  // ================= ITEM POPUP (icon SVG 30x30) =================
+  Widget _popupItem(
+    BuildContext context, {
     required int index,
     required String label,
     required String asset,
@@ -74,12 +87,13 @@ class BottomNav extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: () => onTap(index),
         child: Center(
-          child: Container(
-            width: 55,
-            height: 50,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: context.w(55),
+            height: context.w(50),
             decoration: BoxDecoration(
               color: active ? Colors.white : Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(context.w(20)),
               border: active ? Border.all(color: _divider, width: 1) : null,
               boxShadow: active
                   ? const [
@@ -96,20 +110,22 @@ class BottomNav extends StatelessWidget {
               children: [
                 SvgPicture.asset(
                   asset,
-                  width: 30,
-                  height: 30,
+                  width: context.w(30),
+                  height: context.w(30),
                   colorFilter: ColorFilter.mode(
                     active ? _red : _grey,
                     BlendMode.srcIn,
                   ),
                 ),
                 if (active) ...[
-                  const SizedBox(height: 2),
+                  SizedBox(height: context.w(2)),
                   Text(
                     label,
-                    style: const TextStyle(
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                    style: TextStyle(
                       fontFamily: 'Inter',
-                      fontSize: 10,
+                      fontSize: context.sp(10),
                       fontWeight: FontWeight.w500,
                       color: _red,
                       height: 12 / 10,
@@ -125,7 +141,7 @@ class BottomNav extends StatelessWidget {
   }
 
   // ================= TOMBOL TENGAH (gambar bayi + garpu sendok) =================
-  Widget _centerItem(int index) {
+  Widget _centerItem(BuildContext context, int index) {
     final active = currentIndex == index;
 
     return Expanded(
@@ -133,13 +149,17 @@ class BottomNav extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: () => onTap(index),
         child: Center(
-          child: Container(
-            width: 65,
-            height: 50,
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: context.w(65),
+            height: context.w(50),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.w(4),
+              vertical: context.w(6),
+            ),
             decoration: BoxDecoration(
               color: active ? Colors.white : Colors.transparent,
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.circular(context.w(30)),
               border: active ? Border.all(color: _divider) : null,
               boxShadow: active
                   ? const [
@@ -155,7 +175,7 @@ class BottomNav extends StatelessWidget {
               _centerImage,
               fit: BoxFit.contain,
               errorBuilder: (_, _, _) =>
-                  const Icon(Icons.child_care, color: _red, size: 28),
+                  Icon(Icons.child_care, color: _red, size: context.w(28)),
             ),
           ),
         ),

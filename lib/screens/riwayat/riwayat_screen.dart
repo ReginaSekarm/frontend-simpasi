@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
 import '../home/home_ibu_screen.dart';
 import '../koleksi/koleksi_screen.dart';
@@ -97,9 +99,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   static const Color primaryRed   = Color(0xFFD45060);
   static const Color bgCream      = Color(0xFFFCEBD5);
   static const Color bgPinkChip   = Color(0xFFF7A497);
-  static const Color chipBg       = Color(0x80F88B92); // pink 50%
+  static const Color chipBg       = Color(0x80F88B92);
   static const Color orangeText   = Color(0xFFE38621);
-  static const Color orangeFaded  = Color(0xB3E38621); // 70% alpha
+  static const Color orangeFaded  = Color(0xB3E38621);
   static const Color dividerOrange= Color(0xFFBE6D15);
   static const Color textBlack    = Color(0xFF000000);
   static const Color textGrey     = Color(0xFF8F8F8F);
@@ -108,7 +110,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   static const Color statusOrange = Color(0xFFF1A038);
   static const Color statusGreen  = Color(0xFF76C457);
   static const Color purpleAI     = Color(0xFF9564DD);
-  static const Color iconCircleBg = Color(0xA3FFFFFF); // white 64%
+  static const Color iconCircleBg = Color(0xA3FFFFFF);
+
+  // Icon AI (sudah berwarna sendiri, jangan diberi colorFilter)
+  static const String _aiIcon = 'assets/images/AI.svg';
 
   // 0 = Pencarian, 1 = Pemeriksaan Stunting
   late int _tab;
@@ -198,22 +203,22 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 children: [
                   _buildHeader(context),
 
-                  const SizedBox(height: 32),
+                  SizedBox(height: context.w(32)),
 
                   // ================= ISI TAB =================
                   if (_tab == 1) ...[
                     for (int i = 0; i < _riwayat.length; i++) ...[
-                      if (i > 0) const SizedBox(height: 27),
-                      _buildRiwayatCard(_riwayat[i]),
+                      if (i > 0) SizedBox(height: context.w(27)),
+                      _buildRiwayatCard(context, _riwayat[i]),
                     ],
                   ] else ...[
                     for (int i = 0; i < _pencarian.length; i++) ...[
-                      if (i > 0) const SizedBox(height: 28),
-                      _buildPencarianGroup(_pencarian[i]),
+                      if (i > 0) SizedBox(height: context.w(28)),
+                      _buildPencarianGroup(context, _pencarian[i]),
                     ],
                   ],
 
-                  const SizedBox(height: 140),
+                  SizedBox(height: context.w(140)),
                 ],
               ),
             ),
@@ -250,29 +255,29 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
-      height: topPad + 184,
-      decoration: const BoxDecoration(
+      height: topPad + context.w(184),
+      decoration: BoxDecoration(
         color: primaryRed,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(25),
-          bottomRight: Radius.circular(25),
+          bottomLeft: Radius.circular(context.w(25)),
+          bottomRight: Radius.circular(context.w(25)),
         ),
       ),
       child: Stack(
         children: [
           // Baris 1: "Riwayat" + bell
           Positioned(
-            top: topPad + 20,
-            left: 28,
-            right: 16,
+            top: topPad + context.w(20),
+            left: context.w(28),
+            right: context.w(16),
             child: SizedBox(
-              height: 50,
+              height: context.w(50),
               child: Row(
                 children: [
                   Text(
                     'Riwayat',
                     style: GoogleFonts.inter(
-                      fontSize: 24,
+                      fontSize: context.sp(24),
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                       height: 32 / 24,
@@ -288,16 +293,16 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       );
                     },
                     behavior: HitTestBehavior.opaque,
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
+                    child: Padding(
+                      padding: EdgeInsets.all(context.w(4)),
                       child: Icon(
                         Icons.notifications_outlined,
                         color: Colors.white,
-                        size: 25,
+                        size: context.w(25),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 15),
+                  SizedBox(width: context.w(15)),
                 ],
               ),
             ),
@@ -305,20 +310,20 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
 
           // Baris 2: Tab toggle
           Positioned(
-            top: topPad + 90,
-            left: 38,
-            right: 38,
+            top: topPad + context.w(90),
+            left: context.w(38),
+            right: context.w(38),
             child: Container(
-              height: 55,
-              padding: const EdgeInsets.all(7),
+              height: context.w(55),
+              padding: EdgeInsets.all(context.w(7)),
               decoration: BoxDecoration(
                 color: bgCream,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(context.w(20)),
               ),
               child: Row(
                 children: [
-                  _buildTab(0, 'Pencarian'),
-                  _buildTab(1, 'Pemeriksaan\nStunting'),
+                  _buildTab(context, 0, 'Pencarian'),
+                  _buildTab(context, 1, 'Pemeriksaan\nStunting'),
                 ],
               ),
             ),
@@ -328,7 +333,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  Widget _buildTab(int index, String label) {
+  Widget _buildTab(BuildContext context, int index, String label) {
     final active = _tab == index;
     return Expanded(
       child: GestureDetector(
@@ -338,13 +343,13 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: active ? bgPinkChip : Colors.transparent,
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(context.w(15)),
           ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
-              fontSize: 13,
+              fontSize: context.sp(13),
               fontWeight: FontWeight.w600,
               color: textBlack,
               height: 16 / 13,
@@ -356,25 +361,33 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   // ================= PENCARIAN GROUP CARD =================
-  Widget _buildPencarianGroup(PencarianGroup group) {
+  Widget _buildPencarianGroup(BuildContext context, PencarianGroup group) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 31),
+      padding: EdgeInsets.symmetric(horizontal: context.w(31)),
       child: Container(
         decoration: BoxDecoration(
           color: bgCream,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(context.w(20)),
         ),
-        padding: const EdgeInsets.fromLTRB(7, 12, 7, 8),
+        padding: EdgeInsets.fromLTRB(
+          context.w(7),
+          context.w(12),
+          context.w(7),
+          context.w(8),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ==== Header: "Sabtu 12 Sep 2026" ====
             Padding(
-              padding: const EdgeInsets.only(left: 7, bottom: 10),
+              padding: EdgeInsets.only(
+                left: context.w(7),
+                bottom: context.w(10),
+              ),
               child: RichText(
                 text: TextSpan(
                   style: GoogleFonts.inter(
-                    fontSize: 15,
+                    fontSize: context.sp(15),
                     fontWeight: FontWeight.w700,
                     color: orangeText,
                     height: 19 / 15,
@@ -384,7 +397,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     TextSpan(
                       text: '  ${group.tanggal}',
                       style: GoogleFonts.inter(
-                        fontSize: 15,
+                        fontSize: context.sp(15),
                         fontWeight: FontWeight.w400,
                         color: orangeFaded,
                         height: 19 / 15,
@@ -396,15 +409,15 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             ),
 
             // Divider header
-            Container(height: 1, color: dividerOrange),
+            Container(height: context.w(1), color: dividerOrange),
 
             // ==== List pencarian item ====
             for (int i = 0; i < group.items.length; i++) ...[
-              _buildPencarianItem(group.items[i]),
+              _buildPencarianItem(context, group.items[i]),
               if (i < group.items.length - 1)
                 Padding(
-                  padding: const EdgeInsets.only(left: 37),
-                  child: Container(height: 1, color: dividerOrange),
+                  padding: EdgeInsets.only(left: context.w(37)),
+                  child: Container(height: context.w(1), color: dividerOrange),
                 ),
             ],
           ],
@@ -414,7 +427,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   // ================= PENCARIAN ITEM =================
-  Widget _buildPencarianItem(PencarianItem item) {
+  Widget _buildPencarianItem(BuildContext context, PencarianItem item) {
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
@@ -425,27 +438,29 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       },
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
+        padding: EdgeInsets.fromLTRB(0, context.w(12), 0, context.w(12)),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // AI icon circle
             Container(
-              width: 30,
-              height: 30,
+              width: context.w(30),
+              height: context.w(30),
               decoration: const BoxDecoration(
                 color: iconCircleBg,
                 shape: BoxShape.circle,
               ),
-              child: const Center(
-                child: Icon(
-                  Icons.auto_awesome,
-                  size: 20,
-                  color: purpleAI,
+              child: Center(
+                // 👇 ICON AI dari assets/images/AI.svg (warna bawaan SVG)
+                child: SvgPicture.asset(
+                  _aiIcon,
+                  width: context.w(20),
+                  height: context.w(20),
+                  fit: BoxFit.contain,
                 ),
               ),
             ),
-            const SizedBox(width: 13),
+            SizedBox(width: context.w(13)),
 
             // Kolom chips + "N resep ditemukan"
             Expanded(
@@ -454,26 +469,26 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 children: [
                   // Chips
                   Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                    spacing: context.w(6),
+                    runSpacing: context.w(6),
                     children: item.keywords.map((k) {
                       return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.w(12),
+                          vertical: context.w(4),
                         ),
                         decoration: BoxDecoration(
                           color: chipBg,
                           border: Border.all(
                             color: primaryRed,
-                            width: 0.35,
+                            width: context.w(0.35),
                           ),
-                          borderRadius: BorderRadius.circular(21),
+                          borderRadius: BorderRadius.circular(context.w(21)),
                         ),
                         child: Text(
                           k,
                           style: GoogleFonts.inter(
-                            fontSize: 8.5,
+                            fontSize: context.sp(8.5),
                             fontWeight: FontWeight.w600,
                             color: textBlack,
                             height: 10 / 8.5,
@@ -482,11 +497,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: context.w(6)),
                   Text(
                     '${item.jumlahResep} Resep ditemukan',
                     style: GoogleFonts.inter(
-                      fontSize: 8.5,
+                      fontSize: context.sp(8.5),
                       fontWeight: FontWeight.w500,
                       color: textBlack,
                       height: 10 / 8.5,
@@ -497,12 +512,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             ),
 
             // Chevron
-            const Icon(
+            Icon(
               Icons.chevron_right,
-              size: 26,
+              size: context.w(26),
               color: textBlack,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: context.w(8)),
           ],
         ),
       ),
@@ -510,9 +525,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   // ================= KARTU RIWAYAT PEMERIKSAAN =================
-  Widget _buildRiwayatCard(RiwayatItem item) {
+  Widget _buildRiwayatCard(BuildContext context, RiwayatItem item) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 31),
+      padding: EdgeInsets.symmetric(horizontal: context.w(31)),
       child: GestureDetector(
         onTap: () {
           Navigator.of(context).push(
@@ -534,23 +549,26 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         },
         behavior: HitTestBehavior.opaque,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 105),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 21),
+          constraints: BoxConstraints(minHeight: context.w(105)),
+          padding: EdgeInsets.symmetric(
+            horizontal: context.w(18),
+            vertical: context.w(21),
+          ),
           decoration: BoxDecoration(
             color: bgCream,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(context.w(20)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Kotak tanggal
               Container(
-                constraints: const BoxConstraints(minHeight: 63),
-                width: 59,
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                constraints: BoxConstraints(minHeight: context.w(63)),
+                width: context.w(59),
+                padding: EdgeInsets.symmetric(vertical: context.w(6)),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(context.w(10)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -559,7 +577,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     Text(
                       item.tglHari,
                       style: GoogleFonts.inter(
-                        fontSize: 15,
+                        fontSize: context.sp(15),
                         fontWeight: FontWeight.w600,
                         color: textDarkDate,
                         height: 18 / 15,
@@ -568,7 +586,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     Text(
                       item.tglBulan,
                       style: GoogleFonts.inter(
-                        fontSize: 15,
+                        fontSize: context.sp(15),
                         fontWeight: FontWeight.w600,
                         color: textDarkDate,
                         height: 18 / 15,
@@ -577,7 +595,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 15),
+              SizedBox(width: context.w(15)),
 
               Expanded(
                 child: Column(
@@ -590,27 +608,27 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                           child: Text(
                             item.judul,
                             style: GoogleFonts.inter(
-                              fontSize: 15,
+                              fontSize: context.sp(15),
                               fontWeight: FontWeight.w600,
                               color: textBlack,
                               height: 18 / 15,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: context.w(8)),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 3,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: context.w(12),
+                            vertical: context.w(3),
                           ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(context.w(10)),
                           ),
                           child: Text(
                             item.status,
                             style: GoogleFonts.inter(
-                              fontSize: 11,
+                              fontSize: context.sp(11),
                               fontWeight: FontWeight.w500,
                               color: _statusColor(item.status),
                               height: 13 / 11,
@@ -619,11 +637,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 9),
+                    SizedBox(height: context.w(9)),
                     Text(
                       item.catatan,
                       style: GoogleFonts.inter(
-                        fontSize: 11,
+                        fontSize: context.sp(11),
                         fontWeight: FontWeight.w400,
                         color: textBlack,
                         height: 13 / 11,
@@ -631,23 +649,23 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.w(12)),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Text(
                           'Detail',
                           style: GoogleFonts.inter(
-                            fontSize: 11,
+                            fontSize: context.sp(11),
                             fontWeight: FontWeight.w500,
                             color: textBlack,
                             height: 13 / 11,
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        const Icon(
+                        SizedBox(width: context.w(4)),
+                        Icon(
                           Icons.chevron_right,
-                          size: 18,
+                          size: context.w(18),
                           color: textBlack,
                         ),
                       ],

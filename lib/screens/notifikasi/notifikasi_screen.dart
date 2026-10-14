@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../utils/responsive.dart';
 import '../menu/detail_resep_screen.dart';
 import '../riwayat/riwayat_screen.dart';
 
@@ -43,8 +44,8 @@ class _NotifItem {
 
 // ================= AKSI TIAP NOTIFIKASI =================
 enum _NotifAction {
-  bukaResepPepaya,   // ke DetailResepScreen Pepaya lumat
-  bukaRiwayat,       // ke RiwayatScreen — tab Pemeriksaan Stunting
+  bukaResepPepaya,
+  bukaRiwayat,
 }
 
 class NotifikasiScreen extends StatelessWidget {
@@ -102,7 +103,6 @@ class NotifikasiScreen extends StatelessWidget {
         break;
 
       case _NotifAction.bukaRiwayat:
-        // 👇 FIX: initialTab: 1 → langsung buka tab Pemeriksaan Stunting
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => const RiwayatScreen(initialTab: 1),
@@ -124,23 +124,23 @@ class NotifikasiScreen extends StatelessWidget {
           children: [
             // ================= HEADER =================
             Container(
-              height: topPad + 150,
-              decoration: const BoxDecoration(
+              height: topPad + context.w(150),
+              decoration: BoxDecoration(
                 color: primaryRed,
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(50),
-                  bottomRight: Radius.circular(50),
+                  bottomLeft: Radius.circular(context.w(50)),
+                  bottomRight: Radius.circular(context.w(50)),
                 ),
               ),
               child: Stack(
                 children: [
                   Positioned(
-                    left: 28,
-                    bottom: 32,
+                    left: context.w(28),
+                    bottom: context.w(32),
                     child: Text(
                       'Notifikasi',
                       style: GoogleFonts.inter(
-                        fontSize: 24,
+                        fontSize: context.sp(24),
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                         height: 32 / 24,
@@ -150,17 +150,17 @@ class NotifikasiScreen extends StatelessWidget {
 
                   // Close icon
                   Positioned(
-                    right: 30,
-                    bottom: 27,
+                    right: context.w(30),
+                    bottom: context.w(27),
                     child: GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
                       behavior: HitTestBehavior.opaque,
-                      child: const SizedBox(
-                        width: 30,
-                        height: 30,
+                      child: SizedBox(
+                        width: context.w(30),
+                        height: context.w(30),
                         child: Icon(
                           Icons.close,
-                          size: 28,
+                          size: context.w(28),
                           color: Colors.white,
                         ),
                       ),
@@ -170,18 +170,18 @@ class NotifikasiScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 36),
+            SizedBox(height: context.w(36)),
 
             // ================= LIST NOTIFIKASI =================
             for (int i = 0; i < _notifs.length; i++) ...[
-              if (i > 0) const SizedBox(height: 20),
+              if (i > 0) SizedBox(height: context.w(20)),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
+                padding: EdgeInsets.symmetric(horizontal: context.w(28)),
                 child: _buildNotifCard(context, _notifs[i]),
               ),
             ],
 
-            const SizedBox(height: 60),
+            SizedBox(height: context.w(60)),
           ],
         ),
       ),
@@ -191,11 +191,16 @@ class NotifikasiScreen extends StatelessWidget {
   // ================= KARTU NOTIFIKASI =================
   Widget _buildNotifCard(BuildContext context, _NotifItem item) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 105),
-      padding: const EdgeInsets.fromLTRB(29, 19, 28, 19),
+      constraints: BoxConstraints(minHeight: context.w(105)),
+      padding: EdgeInsets.fromLTRB(
+        context.w(29),
+        context.w(19),
+        context.w(28),
+        context.w(19),
+      ),
       decoration: BoxDecoration(
         color: bgCream,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(context.w(20)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,18 +209,18 @@ class NotifikasiScreen extends StatelessWidget {
           Text(
             item.judul,
             style: GoogleFonts.inter(
-              fontSize: 14,
+              fontSize: context.sp(14),
               fontWeight: FontWeight.w600,
               color: textBlack,
               height: 17 / 14,
             ),
           ),
-          const SizedBox(height: 7),
+          SizedBox(height: context.w(7)),
 
           // Isi (dengan bold text yang bisa di-tap)
           _buildIsiRich(context, item),
 
-          const SizedBox(height: 8),
+          SizedBox(height: context.w(8)),
 
           // Waktu align kanan
           Align(
@@ -223,7 +228,7 @@ class NotifikasiScreen extends StatelessWidget {
             child: Text(
               item.waktu,
               style: GoogleFonts.inter(
-                fontSize: 12,
+                fontSize: context.sp(12),
                 fontWeight: FontWeight.w400,
                 color: textGrey,
                 height: 15 / 12,
@@ -240,7 +245,7 @@ class NotifikasiScreen extends StatelessWidget {
     return RichText(
       text: TextSpan(
         style: GoogleFonts.inter(
-          fontSize: 12,
+          fontSize: context.sp(12),
           fontWeight: FontWeight.w400,
           color: textBlack.withValues(alpha: 0.8),
           height: 15 / 12,
@@ -253,7 +258,7 @@ class NotifikasiScreen extends StatelessWidget {
           TextSpan(
             text: item.boldText,
             style: GoogleFonts.inter(
-              fontSize: 12,
+              fontSize: context.sp(12),
               fontWeight: FontWeight.w700,
               color: textBlack,
               height: 15 / 12,

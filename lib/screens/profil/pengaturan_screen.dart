@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'ganti_kata_sandi.dart';
 import 'pusat_bantuan_screen.dart';
 import 'tentang_kami_screen.dart';
+import '../auth/login.dart'; // Pastikan path ini sesuai dengan struktur folder Ibu
 
 class GoogleFonts {
   static TextStyle inter({
@@ -12,6 +13,7 @@ class GoogleFonts {
     TextDecoration? decoration,
   }) {
     return TextStyle(
+      fontFamily: 'Inter',
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -55,10 +57,10 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
           // Spacer → push tombol hapus ke bawah
           const Spacer(),
 
-          // ================= TOMBOL HAPUS AKUN =================
+          // ================= TOMBOL HAPUS AKUN (BAGIAN INI YANG TADI HILANG) =================
           _buildHapusAkunButton(context),
 
-          SizedBox(height: topPad == 0 ? 35 : 35),
+          const SizedBox(height: 35),
         ],
       ),
     );
@@ -123,42 +125,42 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
         child: Column(
           children: [
             _buildMenuItem(
-            icon: Icons.lock_outline,
-            label: 'Ganti Kata Sandi',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const GantiKataSandiScreen(),
-                ),
-              );
-            },
-          ),
+              icon: Icons.lock_outline,
+              label: 'Ganti Kata Sandi',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const GantiKataSandiScreen(),
+                  ),
+                );
+              },
+            ),
             _buildDivider(),
 
             _buildMenuItem(
-            icon: Icons.help_outline,
-            label: 'Pusat Bantuan',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const PusatBantuanScreen(),
-                ),
-              );
-            },
-          ),
+              icon: Icons.help_outline,
+              label: 'Pusat Bantuan',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const PusatBantuanScreen(),
+                  ),
+                );
+              },
+            ),
             _buildDivider(),
 
             _buildMenuItem(
-            icon: Icons.info_outline,
-            label: 'Tentang Kami',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const TentangKamiScreen(),
-                ),
-              );
-            },
-          ),
+              icon: Icons.info_outline,
+              label: 'Tentang Kami',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const TentangKamiScreen(),
+                  ),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -217,32 +219,115 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: GestureDetector(
         onTap: () {
+          // ================= POPUP KONFIRMASI KUSTOM =================
           showDialog(
             context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('Hapus Akun'),
-              content: const Text(
-                'Yakin ingin menghapus akun? '
-                'Tindakan ini tidak bisa dibatalkan.',
+            barrierDismissible: true,
+            builder: (_) => Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: Container(
+                width: 259,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32, 
+                  vertical: 30
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Judul Popup
+                    Text(
+                      'Hapus Akun?',
+                      style: GoogleFonts.inter(
+                        fontSize: 17.76,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black.withValues(alpha: 0.71),
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    
+                    // Deskripsi Popup
+                    Text(
+                      'Semua data kamu akan dihapus secara permanen dan tidak bisa dipulihkan.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 13.32,
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFF8F8F8F),
+                        height: 16 / 13.32,
+                      ),
+                    ),
+                    const SizedBox(height: 25),
+                    
+                    // Tombol Aksi (Batal & Hapus)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Tombol Batal
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            width: 92.5,
+                            height: 29.6,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD9D9D9).withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(11.02),
+                            ),
+                            child: Text(
+                              'Batal',
+                              style: GoogleFonts.inter(
+                                fontSize: 13.32,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF8F8F8F),
+                              ),
+                            ),
+                          ),
+                        ),
+                        
+                        // Tombol Hapus (DI SINI LOGIKA PINDAH KE LOGIN DITARUH)
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context); // 1. Tutup dialog konfirmasi
+                            
+                            // 2. Pindah ke LoginScreen dan hapus semua history navigasi
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const LoginScreen(showDeletedSuccess: true),
+                              ),
+                              (route) => false, // Menghapus semua rute sebelumnya
+                            );
+                          },
+                          child: Container(
+                            width: 92.5,
+                            height: 29.6,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF0020),
+                              borderRadius: BorderRadius.circular(11.02),
+                            ),
+                            child: Text(
+                              'Ya, hapus',
+                              style: GoogleFonts.inter(
+                                fontSize: 13.32,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Batal'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    // TODO: aksi hapus akun + logout
-                  },
-                  child: const Text(
-                    'Hapus',
-                    style: TextStyle(color: exitRed),
-                  ),
-                ),
-              ],
             ),
           );
+          // ================================================================
         },
         behavior: HitTestBehavior.opaque,
         child: Container(

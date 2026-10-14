@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/responsive.dart';
+
 class ChildSwitchGroup extends StatelessWidget {
   final String childGender; // 'L' / 'P'
   final bool showAddButton;
@@ -19,53 +21,53 @@ class ChildSwitchGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 87,
-      height: 37,
+      width: context.w(87),
+      height: context.w(37),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           // Pill abu
           Positioned(
-            left: 10,
-            top: 7,
+            left: context.w(10),
+            top: context.w(7),
             child: Container(
-              width: 77,
-              height: 30,
+              width: context.w(77),
+              height: context.w(30),
               decoration: BoxDecoration(
                 color: _figmaGrey,
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(context.w(15)),
               ),
             ),
           ),
 
           // Maskot
           Positioned(
-            left: 23,
-            top: 9,
+            left: context.w(23),
+            top: context.w(9),
             child: Image.asset(
               childGender == 'P'
                   ? 'assets/images/kepala_b.cewe.png'
                   : 'assets/images/kepala_b.cowo.png',
-              width: 30.84,
-              height: 23,
+              width: context.w(30.84),
+              height: context.w(23),
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
             ),
           ),
 
           // Panah ⇄ / tombol +
           Positioned(
-            left: 59,
-            top: 14,
+            left: context.w(59),
+            top: context.w(14),
             child: GestureDetector(
               onTap: showAddButton ? onAdd : onSwitch,
               behavior: HitTestBehavior.opaque,
               child: SizedBox(
-                width: 16,
-                height: 16,
+                width: context.w(16),
+                height: context.w(16),
                 child: Icon(
                   showAddButton ? Icons.add : Icons.swap_horiz_rounded,
-                  size: 16,
+                  size: context.w(16),
                   color: Colors.white,
                 ),
               ),
@@ -80,16 +82,16 @@ class ChildSwitchGroup extends StatelessWidget {
               onTap: onSwitch,
               behavior: HitTestBehavior.opaque,
               child: Container(
-                width: 24,
-                height: 24,
+                width: context.w(24),
+                height: context.w(24),
                 decoration: const BoxDecoration(
                   color: _figmaGrey,
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
+                child: Icon(
                   Icons.change_circle_rounded,
-                  size: 24,
+                  size: context.w(24),
                   color: Colors.white,
                 ),
               ),

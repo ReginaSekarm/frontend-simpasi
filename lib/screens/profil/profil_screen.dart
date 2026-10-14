@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
 import '../koleksi/koleksi_screen.dart';
 import '../menu/menu_screen.dart';
 import '../riwayat/riwayat_screen.dart';
 import 'edit_profil_screen.dart';
-import 'pengaturan_screen.dart'; 
+import 'pengaturan_screen.dart';
 import '../notifikasi/notifikasi_screen.dart';
 
+// Mock GoogleFonts (Jika kamu menggunakan package google_fonts asli, hapus class ini dan import package-nya)
 class GoogleFonts {
   static TextStyle inter({
     double? fontSize,
@@ -17,6 +19,7 @@ class GoogleFonts {
     TextDecoration? decoration,
   }) {
     return TextStyle(
+      fontFamily: 'Inter', // Tambahkan ini agar font Inter terbaca
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -35,14 +38,14 @@ class ProfilScreen extends StatefulWidget {
 
 class _ProfilScreenState extends State<ProfilScreen> {
   // Warna dari Figma
-  static const Color primaryRed  = Color(0xFFD45060);
-  static const Color bgCream     = Color(0xFFFFF1B5);
-  static const Color textBlack   = Color(0xFF000000);
-  static const Color textGrey    = Color(0xFF8F8F8F);
-  static const Color exitRed     = Color(0xFFFF0000);
-  static const Color exitBg      = Color(0x1AFF0000); // rgba(255,0,0,0.1)
+  static const Color primaryRed   = Color(0xFFD45060);
+  static const Color bgCream      = Color(0xFFFCEBD5);
+  static const Color textBlack    = Color(0xFF000000);
+  static const Color textGrey     = Color(0xFF8F8F8F);
+  static const Color textBrown    = Color(0xFF9E5665);
+  static const Color exitRed      = Color(0xFFFF0000);
+  static const Color exitBg       = Color(0x1AFF0000);
 
-  // Data dummy user
   String _nama = 'Aisyah';
 
   @override
@@ -57,11 +60,11 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildTopSection(context),
-                  const SizedBox(height: 36),
+                  SizedBox(height: context.w(93)),
                   _buildMenuCard(context),
-                  const SizedBox(height: 115),
+                  SizedBox(height: context.w(115)),
                   _buildKeluarButton(context),
-                  const SizedBox(height: 100),
+                  SizedBox(height: context.w(100)), // Space untuk bottom nav
                 ],
               ),
             ),
@@ -98,7 +101,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
     final topPad = MediaQuery.of(context).padding.top;
 
     return SizedBox(
-      height: topPad + 390,
+      height: topPad + context.w(290),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -108,12 +111,12 @@ class _ProfilScreenState extends State<ProfilScreen> {
             left: 0,
             right: 0,
             child: Container(
-              height: topPad + 184,
-              decoration: const BoxDecoration(
+              height: topPad + context.w(200),
+              decoration: BoxDecoration(
                 color: primaryRed,
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(50),
-                  bottomRight: Radius.circular(50),
+                  bottomLeft: Radius.circular(context.w(50)),
+                  bottomRight: Radius.circular(context.w(50)),
                 ),
               ),
             ),
@@ -121,17 +124,17 @@ class _ProfilScreenState extends State<ProfilScreen> {
 
           // ---- Title "Profil" + bell ----
           Positioned(
-            top: topPad + 20,
-            left: 44,
-            right: 16,
+            top: topPad + context.w(20),
+            left: context.w(44),
+            right: context.w(16),
             child: SizedBox(
-              height: 50,
+              height: context.w(40),
               child: Row(
                 children: [
                   Text(
                     'Profil',
                     style: GoogleFonts.inter(
-                      fontSize: 24,
+                      fontSize: context.sp(24),
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                       height: 29 / 24,
@@ -147,67 +150,100 @@ class _ProfilScreenState extends State<ProfilScreen> {
                       );
                     },
                     behavior: HitTestBehavior.opaque,
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
+                    child: Padding(
+                      padding: EdgeInsets.all(context.w(4)),
                       child: Icon(
                         Icons.notifications_outlined,
                         color: Colors.white,
-                        size: 25,
+                        size: context.w(25),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 15),
+                  SizedBox(width: context.w(15)),
                 ],
               ),
             ),
           ),
 
-          // ---- Kartu kuning (avatar + nama) ----
+          // ---- Kartu putih (nama + badge) ----
           Positioned(
-            top: topPad + 120,
-            left: 20,
-            right: 20,
+            top: topPad + context.w(109),
+            left: context.w(23),
+            right: context.w(23),
             child: Container(
-              height: 270,
+              height: context.w(180),
               decoration: BoxDecoration(
-                color: bgCream,
-                borderRadius: BorderRadius.circular(30),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(context.w(25)),
+                boxShadow: [
+                  BoxShadow(
+                    color: textBlack.withValues(alpha: 0.25),
+                    blurRadius: context.w(4),
+                    offset: Offset(0, context.w(4)),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFD9D9D9),
-                      shape: BoxShape.circle,
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/images/avatar_profile.jpg',
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.person,
-                          size: 65,
-                          color: Color(0xFF808080),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 15),
+                  SizedBox(height: context.w(40)),
                   Text(
                     _nama,
                     style: GoogleFonts.inter(
-                      fontSize: 24,
+                      fontSize: context.sp(24),
                       fontWeight: FontWeight.w700,
                       color: textBlack,
                       height: 29 / 24,
                     ),
                   ),
+                  SizedBox(height: context.w(8)),
+                  Container(
+                    width: context.w(108),
+                    height: context.w(32),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: bgCream,
+                      borderRadius: BorderRadius.circular(context.w(20)),
+                    ),
+                    child: Text(
+                      'Orang Tua',
+                      style: GoogleFonts.inter(
+                        fontSize: context.sp(14),
+                        fontWeight: FontWeight.w700,
+                        color: primaryRed,
+                        height: 17 / 14,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: context.w(16)),
                 ],
+              ),
+            ),
+          ),
+
+          // ---- Avatar "A" (overlap atas kartu putih) ----
+          Positioned(
+            top: topPad + context.w(58),
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                width: context.w(102),
+                height: context.w(102),
+                decoration: const BoxDecoration(
+                  color: bgCream,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'A',
+                  style: GoogleFonts.inter(
+                    fontSize: context.sp(49),
+                    fontWeight: FontWeight.w700,
+                    color: textBrown,
+                    height: 59 / 49,
+                  ),
+                ),
               ),
             ),
           ),
@@ -219,17 +255,18 @@ class _ProfilScreenState extends State<ProfilScreen> {
   // ================= KARTU MENU =================
   Widget _buildMenuCard(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: context.w(20)),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.6),
-          border: Border.all(color: textBlack, width: 1),
-          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: textBlack, width: context.w(1)),
+          borderRadius: BorderRadius.circular(context.w(30)),
         ),
         child: Column(
           children: [
             // ---- Edit Profil ----
             _buildMenuItem(
+              context,
               icon: Icons.account_circle,
               label: 'Edit profil',
               onTap: () async {
@@ -246,12 +283,13 @@ class _ProfilScreenState extends State<ProfilScreen> {
 
             // Divider
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 27),
-              child: Container(height: 2, color: textGrey),
+              padding: EdgeInsets.symmetric(horizontal: context.w(27)),
+              child: Container(height: context.w(1.5), color: textGrey),
             ),
 
-            // ---- Pengaturan → NAVIGASI KE PengaturanScreen ----
+            // ---- Pengaturan ----
             _buildMenuItem(
+              context,
               icon: Icons.settings,
               label: 'Pengaturan',
               onTap: () {
@@ -268,7 +306,8 @@ class _ProfilScreenState extends State<ProfilScreen> {
     );
   }
 
-  Widget _buildMenuItem({
+  Widget _buildMenuItem(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
@@ -277,27 +316,27 @@ class _ProfilScreenState extends State<ProfilScreen> {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        height: 82,
+        height: context.w(83),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
+          padding: EdgeInsets.symmetric(horizontal: context.w(28)),
           child: Row(
             children: [
-              Icon(icon, size: 26, color: textBlack),
-              const SizedBox(width: 15),
+              Icon(icon, size: context.w(26), color: textBlack),
+              SizedBox(width: context.w(15)),
               Expanded(
                 child: Text(
                   label,
                   style: GoogleFonts.inter(
-                    fontSize: 18,
+                    fontSize: context.sp(18),
                     fontWeight: FontWeight.w500,
                     color: textBlack,
                     height: 22 / 18,
                   ),
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
-                size: 26,
+                size: context.w(26),
                 color: textBlack,
               ),
             ],
@@ -307,56 +346,135 @@ class _ProfilScreenState extends State<ProfilScreen> {
     );
   }
 
-  // ================= TOMBOL KELUAR =================
+  // ================= TOMBOL KELUAR (DIPERBAIKI) =================
   Widget _buildKeluarButton(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: context.w(20)),
       child: GestureDetector(
         onTap: () {
+          // ================= POPUP KONFIRMASI KUSTOM SESUAI FIGMA =================
           showDialog(
             context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('Keluar'),
-              content: const Text('Yakin ingin keluar dari akun?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Batal'),
+            barrierDismissible: true, // Klik di luar popup untuk menutup
+            builder: (_) => Dialog(
+              backgroundColor: Colors.transparent, // Menghilangkan background bawaan dialog
+              elevation: 0,
+              child: Container(
+                width: context.w(259), // Lebar sesuai Figma (259px)
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.w(32), 
+                  vertical: context.w(30)
                 ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    // TODO: Navigator ke halaman login
-                  },
-                  child: const Text(
-                    'Keluar',
-                    style: TextStyle(color: exitRed),
-                  ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(context.w(10)), // Radius 10px
                 ),
-              ],
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Judul Popup
+                    Text(
+                      'Keluar',
+                      style: GoogleFonts.inter(
+                        fontSize: context.sp(17.76),
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black.withValues(alpha: 0.71),
+                      ),
+                    ),
+                    SizedBox(height: context.w(15)),
+                    
+                    // Deskripsi Popup
+                    Text(
+                      'Yakin ingin keluar dari akun?',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: context.sp(13.32),
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFF8F8F8F),
+                        height: 16 / 13.32,
+                      ),
+                    ),
+                    SizedBox(height: context.w(25)),
+                    
+                    // Tombol Aksi (Batal & Keluar)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Tombol Batal
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            width: context.w(92.5),
+                            height: context.w(29.6),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD9D9D9).withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(context.w(11.02)),
+                            ),
+                            child: Text(
+                              'Batal',
+                              style: GoogleFonts.inter(
+                                fontSize: context.sp(13.32),
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF8F8F8F),
+                              ),
+                            ),
+                          ),
+                        ),
+                        
+                        // Tombol Keluar
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context);
+                            // TODO: Tambahkan logika navigasi ke halaman login di sini
+                          },
+                          child: Container(
+                            width: context.w(92.5),
+                            height: context.w(29.6),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF0020), // Warna merah sesuai Figma
+                              borderRadius: BorderRadius.circular(context.w(11.02)),
+                            ),
+                            child: Text(
+                              'Keluar',
+                              style: GoogleFonts.inter(
+                                fontSize: context.sp(13.32),
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
+          // ========================================================================
         },
         behavior: HitTestBehavior.opaque,
         child: Container(
-          height: 50,
+          height: context.w(50),
           decoration: BoxDecoration(
             color: exitBg,
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(context.w(15)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.logout,
-                size: 22,
+                size: context.w(24),
                 color: exitRed,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: context.w(8)),
               Text(
                 'Keluar',
                 style: GoogleFonts.inter(
-                  fontSize: 20,
+                  fontSize: context.sp(20),
                   fontWeight: FontWeight.w500,
                   color: exitRed,
                   height: 24 / 20,

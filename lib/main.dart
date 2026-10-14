@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:simpasi/screens/home/home_ibu_screen.dart';
+import 'widgets/responsive_wrapper.dart';
 // import 'screens/splash/splash.dart';
-import 'screens/splash/splash.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,7 +16,8 @@ class MyApp extends StatelessWidget {
       title: 'Simpasi',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(useMaterial3: true),
-      home: const SplashScreen(),
+      builder: (context, child) => ResponsiveWrapper(child: child!),
+      home: ResponsiveWrapper(child: HomeIbuScreen()),
     );
   }
 }

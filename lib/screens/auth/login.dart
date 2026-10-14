@@ -8,7 +8,12 @@ import 'forgot_pass_screen.dart';
 import 'register.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool showDeletedSuccess; // <--- Tambahkan parameter ini
+
+  const LoginScreen({
+    super.key,
+    this.showDeletedSuccess = false, // Default false
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -26,11 +31,72 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _remember = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Jika diarahkan dari hapus akun, tampilkan popup setelah frame pertama selesai
+    if (widget.showDeletedSuccess) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showSuccessPopup();
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _emailC.dispose();
     _passC.dispose();
     super.dispose();
   }
+
+  // ================= POPUP SUKSES HAPUS AKUN =================
+  void _showSuccessPopup() {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          padding: EdgeInsets.zero,
+          duration: const Duration(seconds: 2), // Tutup otomatis
+          // Posisi di dasar layar (menimpa area navbar), sama seperti contoh
+          margin: EdgeInsets.fromLTRB(20, 0, 20, 12 + bottomInset),
+          content: Center(
+            child: Container(
+              width: 290, // Lebar sesuai Figma
+              height: 44, // Tinggi sesuai Figma
+              decoration: BoxDecoration(
+                color: const Color(0xFF77B255), // Warna hijau sesuai Figma
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(width: 21.05), // Padding kiri
+                  const Icon(
+                    Icons.check_circle_outline, // Ikon centang
+                    color: Colors.white,
+                    size: 26.31,
+                  ),
+                  const SizedBox(width: 12), // Jarak antara ikon dan teks
+                  Text(
+                    'Akun berhasil dihapus',
+                    style: gfonts.GoogleFonts.inter(
+                      fontSize: 17.5395,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      height: 21 / 17.5395,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+  }
+  // ============================================================
 
   TextStyle _label() => gfonts.GoogleFonts.inter(
         fontSize: 14,
@@ -75,8 +141,11 @@ class _LoginScreenState extends State<LoginScreen> {
     const validPass  = 'password123';
 
     if (_emailC.text.trim() == validEmail && _passC.text == validPass) {
+      // showLoginSuccess: true -> halaman utama menampilkan snackbar "Login Berhasil"
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeIbuScreen()),
+        MaterialPageRoute(
+          builder: (_) => const HomeIbuScreen(showLoginSuccess: true),
+        ),
       );
     } else {
       showStatusPopup(context, type: PopupType.loginFailed);

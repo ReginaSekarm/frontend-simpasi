@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../utils/responsive.dart';
+
 class GoogleFonts {
   static TextStyle inter({
     double? fontSize,
@@ -37,9 +39,10 @@ class EditProfilScreen extends StatefulWidget {
 class _EditProfilScreenState extends State<EditProfilScreen> {
   // Warna dari Figma
   static const Color primaryOrange = Color(0xFFF1A038);
+  static const Color bgCream       = Color(0xFFFCEBD5);
   static const Color textBlack     = Color(0xFF000000);
-  static const Color textGrey      = Color(0xFF8F8F8F);
-  static const Color inputBg       = Color(0x99FFFFFF); // white 60%
+  static const Color textBrown     = Color(0xFF9E5665);
+  static const Color inputBg       = Color(0x99FFFFFF);
 
   late TextEditingController _namaC;
   late TextEditingController _emailC;
@@ -69,50 +72,52 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
       );
       return;
     }
-
-    // TODO: kirim perubahan ke backend
-
-    // Balikkan nama ke ProfilScreen
     Navigator.of(context).pop(nama);
   }
 
   @override
   Widget build(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top;
+
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ================= HEADER =================
-            SizedBox(
-              height: 60,
+      body: Column(
+        children: [
+          // ================= HEADER =================
+          Padding(
+            padding: EdgeInsets.only(
+              top: topPad + context.w(16),
+              left: context.w(15),
+              right: context.w(15),
+            ),
+            child: SizedBox(
+              height: context.w(40),
               child: Stack(
                 children: [
                   // Back arrow
                   Positioned(
-                    top: 8,
-                    left: 15,
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
                     child: GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
                       behavior: HitTestBehavior.opaque,
-                      child: const SizedBox(
-                        width: 40,
-                        height: 40,
+                      child: SizedBox(
+                        width: context.w(40),
                         child: Icon(
                           Icons.chevron_left,
-                          size: 32,
+                          size: context.w(32),
                           color: textBlack,
                         ),
                       ),
                     ),
                   ),
-
                   // Title
                   Center(
                     child: Text(
                       'Edit Profil',
                       style: GoogleFonts.inter(
-                        fontSize: 24,
+                        fontSize: context.sp(24),
                         fontWeight: FontWeight.w700,
                         color: textBlack,
                         height: 29 / 24,
@@ -122,114 +127,119 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                 ],
               ),
             ),
+          ),
 
-            // ================= CONTENT =================
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 20),
+          // ================= CONTENT =================
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: context.w(20)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(height: context.w(30)),
 
-                    // ---- Avatar ----
-                    Center(
-                      child: Container(
-                        width: 100,
-                        height: 100,
+                  // ---- Avatar + Nama (Row) ----
+                  Row(
+                    children: [
+                      Container(
+                        width: context.w(102),
+                        height: context.w(102),
                         decoration: const BoxDecoration(
-                          color: Color(0xFFD9D9D9),
+                          color: bgCream,
                           shape: BoxShape.circle,
                         ),
-                        child: ClipOval(
-                          child: Image.asset(
-                            'assets/images/avatar_profile.jpg',
-                            width: 100,
-                            height: 100,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.person,
-                              size: 65,
-                              color: Color(0xFF808080),
-                            ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'A',
+                          style: GoogleFonts.inter(
+                            fontSize: context.sp(49),
+                            fontWeight: FontWeight.w700,
+                            color: textBrown,
+                            height: 59 / 49,
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 15),
-
-                    // ---- Nama ----
-                    Center(
-                      child: Text(
-                        _namaC.text.isEmpty ? 'Aisyah' : _namaC.text,
-                        style: GoogleFonts.inter(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
-                          color: textBlack,
-                          height: 29 / 24,
+                      SizedBox(width: context.w(25)),
+                      Expanded(
+                        child: Text(
+                          _namaC.text.isEmpty ? 'Aisyah' : _namaC.text,
+                          style: GoogleFonts.inter(
+                            fontSize: context.sp(24),
+                            fontWeight: FontWeight.w700,
+                            color: textBlack,
+                            height: 29 / 24,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 50),
+                    ],
+                  ),
 
-                    // ---- Field: Nama Lengkap ----
-                    _buildLabel('Nama Lengkap'),
-                    const SizedBox(height: 8),
-                    _buildTextField(controller: _namaC),
+                  SizedBox(height: context.w(62)),
 
-                    const SizedBox(height: 25),
+                  // ---- Field: Nama Lengkap ----
+                  _buildLabel('Nama Lengkap'),
+                  SizedBox(height: context.w(6)),
+                  _buildTextField(controller: _namaC),
 
-                    // ---- Field: Alamat Email ----
-                    _buildLabel('Alamat Email'),
-                    const SizedBox(height: 8),
-                    _buildTextField(
-                      controller: _emailC,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
+                  SizedBox(height: context.w(26)),
 
-                    const SizedBox(height: 25),
+                  // ---- Field: Alamat Email ----
+                  _buildLabel('Alamat Email'),
+                  SizedBox(height: context.w(6)),
+                  _buildTextField(
+                    controller: _emailC,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
 
-                    // ---- Field: No. HP ----
-                    _buildLabel('No. HP'),
-                    const SizedBox(height: 8),
-                    _buildTextField(
-                      controller: _hpC,
-                      keyboardType: TextInputType.phone,
-                    ),
+                  SizedBox(height: context.w(26)),
 
-                    const SizedBox(height: 60),
-                  ],
+                  // ---- Field: No. HP ----
+                  _buildLabel('No. HP'),
+                  SizedBox(height: context.w(6)),
+                  _buildTextField(
+                    controller: _hpC,
+                    keyboardType: TextInputType.phone,
+                  ),
+
+                  SizedBox(height: context.w(40)),
+                ],
+              ),
+            ),
+          ),
+
+          // ================= TOMBOL SIMPAN =================
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              context.w(20),
+              0,
+              context.w(20),
+              MediaQuery.of(context).padding.bottom + context.w(24),
+            ),
+            child: GestureDetector(
+              onTap: _simpan,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                height: context.w(60),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: primaryOrange,
+                  borderRadius: BorderRadius.circular(context.w(15)),
+                ),
+                child: Text(
+                  'Simpan Perubahan',
+                  style: GoogleFonts.inter(
+                    fontSize: context.sp(20),
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                    height: 24 / 20,
+                  ),
                 ),
               ),
             ),
-
-            // ================= TOMBOL SIMPAN =================
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-              child: GestureDetector(
-                onTap: _simpan,
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  height: 60,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: primaryOrange,
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Text(
-                    'Simpan Perubahan',
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                      height: 24 / 20,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -237,11 +247,11 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
   // ================= LABEL =================
   Widget _buildLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(left: 14),
+      padding: EdgeInsets.only(left: context.w(14)),
       child: Text(
         text,
         style: GoogleFonts.inter(
-          fontSize: 16,
+          fontSize: context.sp(16),
           fontWeight: FontWeight.w500,
           color: textBlack,
           height: 19 / 16,
@@ -256,12 +266,12 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     TextInputType? keyboardType,
   }) {
     return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: context.w(50),
+      padding: EdgeInsets.symmetric(horizontal: context.w(14)),
       decoration: BoxDecoration(
         color: inputBg,
-        border: Border.all(color: textBlack, width: 1),
-        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: textBlack, width: context.w(1)),
+        borderRadius: BorderRadius.circular(context.w(10)),
       ),
       child: Center(
         child: TextField(
@@ -269,12 +279,12 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
           keyboardType: keyboardType,
           onChanged: (_) => setState(() {}),
           style: GoogleFonts.inter(
-            fontSize: 16,
+            fontSize: context.sp(16),
             fontWeight: FontWeight.w500,
             color: textBlack,
             height: 19 / 16,
           ),
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,

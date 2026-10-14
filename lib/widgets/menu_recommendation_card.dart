@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart' as google_fonts;
 
+import '../utils/responsive.dart';
 import 'recipe_store.dart';
 
 class MenuRecommendationCard extends StatelessWidget {
@@ -25,132 +26,168 @@ class MenuRecommendationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: 144,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _textBlack, width: 1),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(9, 13, 9, 0),
-              child: SizedBox(
-                width: 125,
-                height: 123,
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.asset(
-                        imagePath,
-                        width: 125,
-                        height: 123,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 125,
-                          height: 123,
-                          color: _textGrey,
-                          child: const Icon(
-                            Icons.fastfood,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 7,
-                      left: 6,
-                      child: Container(
-                        height: 16,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: _badgeYellow,
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: Text(
-                          badge,
-                          style: google_fonts.GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.white,
-                            height: 12 / 10,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 6,
-                      right: 10,
-                      child: ValueListenableBuilder<Set<String>>(
-                        valueListenable: RecipeStore.favorites,
-                        builder: (_, favs, __) {
-                          final liked = favs.contains(title);
-                          return GestureDetector(
-                            onTap: () => RecipeStore.toggle(title),
-                            behavior: HitTestBehavior.opaque,
-                            child: Icon(
-                              liked
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                              color: liked ? _heartRed : _textBlack,
-                              size: 20,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+    final radius = BorderRadius.circular(context.w(10));
+
+    // Material + InkWell: ada efek riak saat kartu ditekan
+    return Material(
+      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: const BorderSide(color: _textBlack, width: 1),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: context.w(144),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  context.w(9),
+                  context.w(13),
+                  context.w(9),
+                  0,
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(13, 8, 9, 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: google_fonts.GoogleFonts.inter(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w400,
-                      color: _textBlack,
-                      height: 12 / 10,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                child: SizedBox(
+                  width: context.w(125),
+                  height: context.w(123),
+                  child: Stack(
                     children: [
-                      const Icon(
-                        Icons.local_fire_department,
-                        size: 12,
-                        color: _fireOrange,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(context.w(10)),
+                        child: Image.asset(
+                          imagePath,
+                          width: context.w(125),
+                          height: context.w(123),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Container(
+                            width: context.w(125),
+                            height: context.w(123),
+                            color: _textGrey,
+                            child: const Icon(
+                              Icons.fastfood,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 2),
-                      Text(
-                        '320 kkal',
-                        style: google_fonts.GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w400,
-                          color: _textBlack,
-                          height: 12 / 10,
+
+                      // Badge usia: dibatasi lebarnya, teks mengecil kalau sempit
+                      Positioned(
+                        top: context.w(7),
+                        left: context.w(6),
+                        child: Container(
+                          height: context.w(16),
+                          constraints: BoxConstraints(maxWidth: context.w(82)),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: context.w(8),
+                          ),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: _badgeYellow,
+                            borderRadius: BorderRadius.circular(context.w(9)),
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              badge,
+                              maxLines: 1,
+                              style: google_fonts.GoogleFonts.inter(
+                                fontSize: context.sp(10),
+                                fontWeight: FontWeight.w400,
+                                color: Colors.white,
+                                height: 12 / 10,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Tombol favorit
+                      Positioned(
+                        top: context.w(2),
+                        right: context.w(6),
+                        child: ValueListenableBuilder<Set<String>>(
+                          valueListenable: RecipeStore.favorites,
+                          builder: (_, favs, _) {
+                            final liked = favs.contains(title);
+                            return GestureDetector(
+                              onTap: () => RecipeStore.toggle(title),
+                              behavior: HitTestBehavior.opaque,
+                              child: Padding(
+                                // area sentuh lebih besar dari ikonnya
+                                padding: EdgeInsets.all(context.w(4)),
+                                child: Icon(
+                                  liked
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: liked ? _heartRed : _textBlack,
+                                  size: context.w(20),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  context.w(13),
+                  context.w(8),
+                  context.w(9),
+                  context.w(6),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: google_fonts.GoogleFonts.inter(
+                        fontSize: context.sp(10),
+                        fontWeight: FontWeight.w400,
+                        color: _textBlack,
+                        height: 12 / 10,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: context.w(8)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Icon(
+                          Icons.local_fire_department,
+                          size: context.w(12),
+                          color: _fireOrange,
+                        ),
+                        SizedBox(width: context.w(2)),
+                        Flexible(
+                          child: Text(
+                            '320 kkal',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: google_fonts.GoogleFonts.inter(
+                              fontSize: context.sp(10),
+                              fontWeight: FontWeight.w400,
+                              color: _textBlack,
+                              height: 12 / 10,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

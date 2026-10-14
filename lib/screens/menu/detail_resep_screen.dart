@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../widgets/bottom_nav.dart';
 import '../../widgets/recipe_store.dart';
-import '../../widgets/komentar_sheet.dart';   // 👈 TAMBAH INI
+import '../../widgets/komentar_sheet.dart';   
 import '../koleksi/koleksi_screen.dart';
 
 class GoogleFonts {
@@ -111,8 +111,8 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
   void _openKomentarSheet() {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,             // 👈 biar bisa tinggi mengikuti konten
-      backgroundColor: Colors.transparent,  // 👈 biar radius dari Container sendiri
+      isScrollControlled: true,             // biar bisa tinggi mengikuti konten
+      backgroundColor: Colors.transparent,  // biar radius dari Container sendiri
       barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (_) => KomentarSheet(recipeTitle: widget.title),
     );
@@ -122,7 +122,7 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SizedBox.expand(               // 👈 fix navbar naik saat konten pendek
+      body: SizedBox.expand(               // fix navbar naik saat konten pendek
         child: Stack(
           children: [
             // ================= KONTEN SCROLL =================

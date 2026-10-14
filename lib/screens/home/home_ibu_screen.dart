@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart' as google_fonts;
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../models/child_data.dart';
+import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
+import '../../widgets/child_store.dart';
 import '../../widgets/child_switch_group.dart';
 import '../../widgets/data_menu_dropdown.dart';
 import '../../widgets/hapus_data_dialog.dart';
+import '../../widgets/initial_avatar.dart';
 import '../../widgets/menu_recommendation_card.dart';
 import '../../widgets/tambah_data_anak_sheet.dart';
 import '../ai/tanya_ai_screen.dart';
@@ -17,7 +21,9 @@ import '../profil/profil_screen.dart';
 import '../riwayat/riwayat_screen.dart';
 
 class HomeIbuScreen extends StatefulWidget {
-  const HomeIbuScreen({super.key});
+  final bool showLoginSuccess; // true kalau baru berhasil login
+
+  const HomeIbuScreen({super.key, this.showLoginSuccess = false});
 
   @override
   State<HomeIbuScreen> createState() => _HomeIbuScreenState();
@@ -35,7 +41,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   static const Color textBlack   = Color(0xFF000000);
   static const Color textBlack71 = Color(0xB5000000);
   static const Color textBlack50 = Color(0x80000000);
-  static const Color purpleAI    = Color(0xFF9564DD);
 
   // ================= DATA ANAK (DUMMY) =================
   final List<ChildData> _children = [
@@ -48,7 +53,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
       tinggi: '63,3',
       kepala: '40,9',
       lila: '14,75',
-      alergi: '', // Boleh diisi, tapi tidak akan tampil di card
+      alergi: '',
       tempat: 'Denpasar',
       tanggalLahir: '01/04/2025',
     ),
@@ -61,7 +66,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
       tinggi: '63,3',
       kepala: '40,9',
       lila: '14,75',
-      alergi: 'Telur', // Boleh diisi, tapi tidak akan tampil di card
+      alergi: 'Telur',
       tempat: 'Denpasar',
       tanggalLahir: '01/04/2025',
     ),
@@ -74,11 +79,34 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
 
   ChildData get _currentChild => _children[_currentChildIndex];
 
+  // ================= SINKRONISASI CHILD STORE =================
+  void _syncCurrentChild() {
+    if (_hasChild) {
+      ChildStore.setCurrent(_currentChild.nama);
+    } else {
+      ChildStore.clear();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _syncCurrentChild();
+
+    // Tampilkan snackbar "Login Berhasil" setelah frame pertama selesai
+    if (widget.showLoginSuccess) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showLoginSuccessSnackBar();
+      });
+    }
+  }
+
   void _switchChild() {
     if (!_hasChild) return;
     setState(() {
       _currentChildIndex = (_currentChildIndex + 1) % _children.length;
     });
+    _syncCurrentChild();
   }
 
   // ================= TAMBAH ANAK =================
@@ -113,6 +141,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
         ));
         _currentChildIndex = _children.length - 1;
       });
+      _syncCurrentChild();
     }
   }
 
@@ -145,17 +174,18 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
         _children[_currentChildIndex] = ChildData(
           nama: result['nama'] ?? _currentChild.nama,
           gender: result['gender'] ?? _currentChild.gender,
-          umur: _currentChild.umur, 
+          umur: _currentChild.umur,
           status: result['status'] ?? _currentChild.status,
           berat: result['berat'] ?? _currentChild.berat,
           tinggi: result['tinggi'] ?? _currentChild.tinggi,
           kepala: result['kepala'] ?? _currentChild.kepala,
           lila: result['lila'] ?? _currentChild.lila,
-          alergi: _currentChild.alergi, // Tetap simpan alergi lama
+          alergi: _currentChild.alergi,
           tempat: result['tempat'] ?? _currentChild.tempat,
           tanggalLahir: result['tanggalLahir'] ?? _currentChild.tanggalLahir,
         );
       });
+      _syncCurrentChild();
     }
   }
 
@@ -163,6 +193,56 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
     );
+  }
+
+  // ================= SNACKBAR LOGIN BERHASIL =================
+  void _showLoginSuccessSnackBar() {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          padding: EdgeInsets.zero,
+          duration: const Duration(seconds: 2), // Tutup otomatis
+          // Posisi di dasar layar, menimpa bottom nav (sama seperti contoh).
+          // Ubah angka 12 kalau mau lebih naik / turun.
+          margin: EdgeInsets.fromLTRB(20, 0, 20, 12 + bottomInset),
+          content: Center(
+            child: Container(
+              width: context.w(275),
+              height: context.w(44),
+              decoration: BoxDecoration(
+                color: const Color(0xFF77B255), // Hijau
+                borderRadius: BorderRadius.circular(context.w(17)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.white,
+                    size: context.w(26),
+                  ),
+                  SizedBox(width: context.w(10)),
+                  Text(
+                    'Login Berhasil',
+                    style: google_fonts.GoogleFonts.inter(
+                      fontSize: context.sp(17),
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      height: 21 / 17,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
   }
 
   // ================= HAPUS ANAK =================
@@ -176,6 +256,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
       _children.removeAt(_currentChildIndex);
       _currentChildIndex = 0;
     });
+    _syncCurrentChild();
   }
 
   // ================= BUKA AI =================
@@ -192,13 +273,12 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
             nama: _currentChild.nama,
             umur: _currentChild.umur,
             gender: _currentChild.gender,
-            alergi: _currentChild.alergi, // Kirim alergi yang tersimpan ke AI
+            alergi: _currentChild.alergi,
           ),
         ),
       ),
     );
-    
-    // Tetap update data alergi di background agar AI ingat untuk sesi berikutnya
+
     if (result != null && mounted) {
       setState(() => _currentChild.alergi = result);
     }
@@ -207,51 +287,54 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   @override
   Widget build(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SizedBox.expand(
         child: Stack(
           children: [
-            // ================= KONTEN SCROLL =================
             SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHeaderSection(context),
                   _buildMenuSection(),
-                  const SizedBox(height: 34),
+                  SizedBox(height: context.w(34)),
                   _buildStuntingBanner(),
-                  const SizedBox(height: 140),
+                  SizedBox(height: context.w(140) + bottomPad),
                 ],
               ),
             ),
 
             // ================= AI FAB =================
             Positioned(
-              bottom: 90,
-              right: 15,
+              bottom: context.w(90) + bottomPad,
+              right: context.w(15),
               child: GestureDetector(
                 onTap: _openAi,
                 behavior: HitTestBehavior.opaque,
                 child: Container(
-                  width: 63,
-                  height: 63,
+                  width: context.w(63),
+                  height: context.w(63),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF5F5F5),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
                         color: textBlack.withValues(alpha: 0.25),
-                        blurRadius: 4,
-                        offset: const Offset(0, 4),
+                        blurRadius: context.w(4),
+                        offset: Offset(0, context.w(4)),
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.auto_awesome,
-                    color: purpleAI,
-                    size: 40,
+                  // 👇 ICON AI
+                  child: Padding(
+                    padding: EdgeInsets.all(context.w(12)),
+                    child: SvgPicture.asset(
+                      'assets/images/AI.svg',
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
@@ -290,8 +373,8 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
             // ================= DROPDOWN UBAH / HAPUS =================
             if (_showDataMenu && _hasChild)
               Positioned(
-                top: topPad + 96,
-                left: 186,
+                top: topPad + context.w(96),
+                left: context.w(186),
                 child: DataMenuDropdown(
                   onEdit: _openUbahAnak,
                   onDelete: _hapusAnak,
@@ -308,62 +391,47 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     final topPad = MediaQuery.of(context).padding.top;
 
     return SizedBox(
-      height: topPad + 286,
+      height: topPad + context.w(286),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Background merah
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: Container(
-              height: topPad + 170,
-              decoration: const BoxDecoration(
+              height: topPad + context.w(170),
+              decoration: BoxDecoration(
                 color: primaryRed,
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(50),
-                  bottomRight: Radius.circular(50),
+                  bottomLeft: Radius.circular(context.w(50)),
+                  bottomRight: Radius.circular(context.w(50)),
                 ),
               ),
             ),
           ),
 
-          // Avatar + nama
           Positioned(
-            top: topPad + 20,
-            left: 16,
-            right: 16,
+            top: topPad + context.w(20),
+            left: context.w(16),
+            right: _hasChild ? context.w(130) : context.w(70),
             child: SizedBox(
-              height: 50,
+              height: context.w(50),
               child: Row(
                 children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
+                  const InitialAvatar(initial: 'A'),
+                  SizedBox(width: context.w(18)),
+                  Expanded(
                     child: Text(
-                      'A',
+                      'Aisyah',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: google_fonts.GoogleFonts.inter(
-                        fontSize: 24,
+                        fontSize: context.sp(24),
                         fontWeight: FontWeight.w700,
-                        color: textBlack,
+                        color: Colors.white,
                         height: 29 / 24,
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 18),
-                  Text(
-                    'Aisyah',
-                    style: google_fonts.GoogleFonts.inter(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      height: 29 / 24,
                     ),
                   ),
                 ],
@@ -371,11 +439,10 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
             ),
           ),
 
-          // Switch group
           if (_hasChild)
             Positioned(
-              top: topPad + 24,
-              right: 61,
+              top: topPad + context.w(24),
+              right: context.w(61),
               child: ChildSwitchGroup(
                 childGender: _currentChild.gender,
                 showAddButton: _children.length < 2,
@@ -384,63 +451,61 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
               ),
             ),
 
-          // Bell
           Positioned(
-            top: topPad + 28,
-            right: 27,
+            top: topPad + context.w(28),
+            right: context.w(27),
             child: GestureDetector(
               onTap: () {
                 Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => const NotifikasiScreen()));
               },
               behavior: HitTestBehavior.opaque,
-              child: const Padding(
-                padding: EdgeInsets.all(4),
+              child: Padding(
+                padding: EdgeInsets.all(context.w(4)),
                 child: Icon(
                   Icons.notifications_outlined,
                   color: Colors.white,
-                  size: 25,
+                  size: context.w(25),
                 ),
               ),
             ),
           ),
 
-          // Kartu data anak ATAU empty state
           Positioned(
-            top: topPad + 116,
-            left: 26,
-            right: 26,
+            top: topPad + context.w(116),
+            left: context.w(26),
+            right: context.w(26),
             child: _hasChild
                 ? Container(
-                    height: 170,
-                    padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
+                    height: context.w(170),
+                    padding: EdgeInsets.fromLTRB(
+                      context.w(14),
+                      context.w(18),
+                      context.w(14),
+                      context.w(14),
+                    ),
                     decoration: BoxDecoration(
                       color: bgPeach,
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(context.w(30)),
                     ),
                     child: _buildChildDataContent(),
                   )
                 : _buildEmptyStateCard(),
           ),
 
-          // Maskot overlap
+          // 👇 MASKOT KEPALA BAYI — pakai SvgPicture, BUKAN Image.asset
           if (_hasChild)
             Positioned(
-              top: topPad + 100,
-              left: 8,
+              top: topPad + context.w(100),
+              left: context.w(8),
               child: SizedBox(
-                width: 96,
-                height: 74,
-                child: Image.asset(
+                width: context.w(96),
+                height: context.w(74),
+                child: SvgPicture.asset(
                   _currentChild.gender == 'P'
-                      ? 'assets/images/kepala_b.cewe.png'
-                      : 'assets/images/kepala_b.cowo.png',
+                      ? 'assets/images/kepala_b.cewe.svg'
+                      : 'assets/images/kepala_b.cowo.svg',
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.child_care,
-                    size: 72,
-                    color: primaryRed,
-                  ),
                 ),
               ),
             ),
@@ -451,34 +516,41 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
 
   // ================= EMPTY STATE CARD =================
   Widget _buildEmptyStateCard() {
-    return GestureDetector(
-      onTap: _openTambahAnak,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        height: 170,
-        decoration: BoxDecoration(
-          color: bgPeach,
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.add,
-              size: 60,
-              color: primaryRed,
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'Tambah Data Anak',
-              style: google_fonts.GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: textBlack.withValues(alpha: 0.7),
-                height: 22 / 18,
+    return Material(
+      color: bgPeach,
+      borderRadius: BorderRadius.circular(context.w(30)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(context.w(30)),
+        onTap: _openTambahAnak,
+        child: SizedBox(
+          height: context.w(170),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // 👇 ICON PLUS — pakai SvgPicture + colorFilter
+              //    Kalau SVG-nya sudah berwarna #D45060, hapus colorFilter
+              SvgPicture.asset(
+                'assets/images/icon-plus.svg',
+                width: context.w(60),
+                height: context.w(60),
+                fit: BoxFit.contain,
+                colorFilter: const ColorFilter.mode(
+                  primaryRed,
+                  BlendMode.srcIn,
+                ),
               ),
-            ),
-          ],
+              SizedBox(height: context.w(14)),
+              Text(
+                'Tambah Data Anak',
+                style: google_fonts.GoogleFonts.inter(
+                  fontSize: context.sp(18),
+                  fontWeight: FontWeight.w700,
+                  color: textBlack.withValues(alpha: 0.7),
+                  height: 22 / 18,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -490,32 +562,40 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 69),
+          padding: EdgeInsets.only(left: context.w(69)),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                _currentChild.nama,
-                style: google_fonts.GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: textBrown,
-                  height: 24 / 20,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _currentChild.nama,
+                    maxLines: 1,
+                    style: google_fonts.GoogleFonts.inter(
+                      fontSize: context.sp(20),
+                      fontWeight: FontWeight.w700,
+                      color: textBrown,
+                      height: 24 / 20,
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 15),
+              SizedBox(width: context.w(8)),
               Container(
-                width: 60,
-                height: 17,
+                height: context.w(17),
+                padding: EdgeInsets.symmetric(horizontal: context.w(8)),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(5),
+                  borderRadius: BorderRadius.circular(context.w(5)),
                 ),
                 child: Text(
                   _currentChild.status,
+                  maxLines: 1,
                   style: google_fonts.GoogleFonts.inter(
-                    fontSize: 10,
+                    fontSize: context.sp(10),
                     fontWeight: FontWeight.w600,
                     color: badgeGreen,
                     height: 12 / 10,
@@ -523,16 +603,21 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
                 ),
               ),
               const Spacer(),
-              GestureDetector(
-                onTap: () =>
-                    setState(() => _showDataMenu = !_showDataMenu),
-                behavior: HitTestBehavior.opaque,
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
-                  child: Icon(
-                    Icons.settings,
-                    color: textBlack71,
-                    size: 25,
+              InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => setState(() => _showDataMenu = !_showDataMenu),
+                child: Padding(
+                  padding: EdgeInsets.all(context.w(4)),
+                  // 👇 ICON SETTINGS dari assets/images/settings.svg
+                  child: SvgPicture.asset(
+                    'assets/images/settings.svg',
+                    width: context.w(25),
+                    height: context.w(25),
+                    fit: BoxFit.contain,
+                    colorFilter: const ColorFilter.mode(
+                      textBlack71,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               ),
@@ -541,38 +626,41 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
         ),
 
         Padding(
-          padding: const EdgeInsets.only(left: 69),
+          padding: EdgeInsets.only(left: context.w(69)),
           child: Row(
             children: [
               Text(
                 _currentChild.gender,
                 style: google_fonts.GoogleFonts.inter(
-                  fontSize: 11,
+                  fontSize: context.sp(11),
                   fontWeight: FontWeight.w700,
                   color: textBlack71,
                   height: 13 / 11,
                 ),
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: context.w(4)),
               Container(
-                width: 4,
-                height: 4,
+                width: context.w(4),
+                height: context.w(4),
                 decoration: const BoxDecoration(
                   color: textGrey,
                   shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: 4),
-              Text(
-                _currentChild.umur,
-                style: google_fonts.GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: textBlack71,
-                  height: 13 / 11,
+              SizedBox(width: context.w(4)),
+              Flexible(
+                child: Text(
+                  _currentChild.umur,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: google_fonts.GoogleFonts.inter(
+                    fontSize: context.sp(11),
+                    fontWeight: FontWeight.w700,
+                    color: textBlack71,
+                    height: 13 / 11,
+                  ),
                 ),
               ),
-              // 👇 BAGIAN BADGE ALERGI SUDAH DIHAPUS DARI SINI
             ],
           ),
         ),
@@ -580,7 +668,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
         const Spacer(),
 
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 17),
+          padding: EdgeInsets.symmetric(horizontal: context.w(17)),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -602,37 +690,42 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
       children: [
         Text(
           label,
+          maxLines: 1,
           style: google_fonts.GoogleFonts.inter(
-            fontSize: 10,
+            fontSize: context.sp(10),
             fontWeight: FontWeight.w500,
             color: textBlack71,
             height: 12 / 10,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: context.w(8)),
         Container(
-          width: 60,
-          height: 60,
+          width: context.w(60),
+          height: context.w(60),
+          padding: EdgeInsets.symmetric(horizontal: context.w(4)),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(context.w(5)),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                value,
-                style: google_fonts.GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: textBlack,
-                  height: 24 / 20,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  style: google_fonts.GoogleFonts.inter(
+                    fontSize: context.sp(20),
+                    fontWeight: FontWeight.w700,
+                    color: textBlack,
+                    height: 24 / 20,
+                  ),
                 ),
               ),
               Text(
                 unit,
                 style: google_fonts.GoogleFonts.inter(
-                  fontSize: 9,
+                  fontSize: context.sp(9),
                   fontWeight: FontWeight.w500,
                   color: textGrey,
                   height: 11 / 9,
@@ -668,50 +761,64 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 44),
+        SizedBox(height: context.w(44)),
         Padding(
-          padding: const EdgeInsets.only(left: 30, right: 26),
+          padding: EdgeInsets.only(
+            left: context.w(30),
+            right: context.w(26),
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Rekomendasi Menu',
-                style: google_fonts.GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  decoration: TextDecoration.underline,
-                  color: textBlack,
-                  height: 19 / 16,
+              Flexible(
+                child: Text(
+                  'Rekomendasi Menu',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: google_fonts.GoogleFonts.inter(
+                    fontSize: context.sp(16),
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                    color: textBlack,
+                    height: 19 / 16,
+                  ),
                 ),
               ),
-              GestureDetector(
+              SizedBox(width: context.w(8)),
+              InkWell(
                 onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const MenuScreen()));
                 },
-                behavior: HitTestBehavior.opaque,
-                child: Text(
-                  'Lihat Semua',
-                  style: google_fonts.GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: textBlack,
-                    height: 13 / 11,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.w(4),
+                    vertical: context.w(4),
+                  ),
+                  child: Text(
+                    'Lihat Semua',
+                    maxLines: 1,
+                    style: google_fonts.GoogleFonts.inter(
+                      fontSize: context.sp(11),
+                      fontWeight: FontWeight.w400,
+                      color: textBlack,
+                      height: 13 / 11,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 21),
+        SizedBox(height: context.w(21)),
         SizedBox(
-          height: 186,
+          height: context.w(192),
           child: ListView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 30),
+            padding: EdgeInsets.symmetric(horizontal: context.w(30)),
             children: [
               for (int i = 0; i < menus.length; i++) ...[
-                if (i > 0) const SizedBox(width: 9),
+                if (i > 0) SizedBox(width: context.w(9)),
                 MenuRecommendationCard(
                   title: menus[i]['title']!,
                   imagePath: menus[i]['imagePath']!,
@@ -738,81 +845,89 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   Widget _buildStuntingBanner() {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 37),
-      height: 190,
+      margin: EdgeInsets.symmetric(horizontal: context.w(37)),
+      constraints: BoxConstraints(minHeight: context.w(190)),
       decoration: BoxDecoration(
         color: bgTeal,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(context.w(30)),
       ),
       child: Stack(
         clipBehavior: Clip.hardEdge,
         children: [
-                    Positioned(
-            right: 3,
+          Positioned(
+            right: context.w(3),
             top: 0,
             child: Opacity(
               opacity: 0.6,
               child: Image.asset(
                 'assets/images/penggaris.png',
-                width: 143,
-                height: 143,
+                width: context.w(143),
+                height: context.w(143),
                 fit: BoxFit.contain,
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(25, 25, 25, 16),
+            padding: EdgeInsets.fromLTRB(
+              context.w(25),
+              context.w(25),
+              context.w(25),
+              context.w(16),
+            ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 SizedBox(
-                  width: 200,
+                  width: context.w(200),
                   child: Text(
                     'Riwayat pemeriksaan stunting',
                     style: google_fonts.GoogleFonts.inter(
-                      fontSize: 16,
+                      fontSize: context.sp(16),
                       fontWeight: FontWeight.w700,
                       color: textBlack,
                       height: 19 / 16,
                     ),
                   ),
                 ),
-                const SizedBox(height: 9),
+                SizedBox(height: context.w(9)),
                 SizedBox(
-                  width: 157,
+                  width: context.w(157),
                   child: Text(
                     'Update dan Check History',
                     style: google_fonts.GoogleFonts.inter(
-                      fontSize: 13,
+                      fontSize: context.sp(13),
                       fontWeight: FontWeight.w500,
                       color: textBlack50,
                       height: 16 / 13,
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => const RiwayatScreen()));
-                  },
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    width: 171,
-                    height: 35,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'Cek Detail',
-                      style: google_fonts.GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: textBlack50,
-                        height: 18 / 15,
+                SizedBox(height: context.w(14)),
+                Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(context.w(20)),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(context.w(20)),
+                    // 👇 Langsung buka Riwayat di tab "Pemeriksaan Stunting"
+                    //    (initialTab: 0 = Pencarian, 1 = Pemeriksaan Stunting)
+                    onTap: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) =>
+                              const RiwayatScreen(initialTab: 1)));
+                    },
+                    child: Container(
+                      width: context.w(171),
+                      height: context.w(35),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Cek Detail',
+                        style: google_fonts.GoogleFonts.inter(
+                          fontSize: context.sp(15),
+                          fontWeight: FontWeight.w700,
+                          color: textBlack50,
+                          height: 18 / 15,
+                        ),
                       ),
                     ),
                   ),
