@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
 import '../../widgets/recipe_store.dart';
+import '../../widgets/notification_icon.dart'; // 👈 TAMBAHKAN IMPORT INI
 import '../home/home_ibu_screen.dart';
 import '../menu/menu_screen.dart';
 import '../riwayat/riwayat_screen.dart';
@@ -60,6 +61,7 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: false,
       body: SizedBox.expand(
         child: Stack(
           children: [
@@ -159,7 +161,6 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
               shape: BoxShape.circle,
             ),
             child: Center(
-              // Icon custom dari assets/images, warna ikut primaryRed
               child: SvgPicture.asset(
                 'assets/images/menu-book.svg',
                 width: context.w(60),
@@ -280,12 +281,12 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
-      height: topPad + context.w(144),
+      height: topPad + context.w(170),
       decoration: BoxDecoration(
         color: primaryRed,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(context.w(25)),
-          bottomRight: Radius.circular(context.w(25)),
+          bottomLeft: Radius.circular(context.w(50)),
+          bottomRight: Radius.circular(context.w(50)),
         ),
       ),
       child: Stack(
@@ -308,7 +309,7 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                     ),
                   ),
                   const Spacer(),
-                  GestureDetector(
+                  NotificationIconButton(
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -316,15 +317,6 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                         ),
                       );
                     },
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: EdgeInsets.all(context.w(4)),
-                      child: Icon(
-                        Icons.notifications_outlined,
-                        color: Colors.white,
-                        size: context.w(25),
-                      ),
-                    ),
                   ),
                   SizedBox(width: context.w(15)),
                 ],
@@ -332,7 +324,7 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
             ),
           ),
           Positioned(
-            top: topPad + context.w(80),
+            top: topPad + context.w(100),
             left: context.w(28),
             right: context.w(28),
             child: Container(
@@ -351,6 +343,9 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                       controller: _searchController,
                       onChanged: (value) {
                         setState(() => _searchQuery = value);
+                      },
+                      onTapOutside: (event) {
+                      FocusScope.of(context).unfocus();
                       },
                       style: GoogleFonts.inter(
                         fontSize: context.sp(12),
@@ -503,10 +498,11 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Icon(
-                      Icons.local_fire_department,
-                      size: context.w(12),
-                      color: fireOrange,
+                    SvgPicture.asset(
+                      'assets/images/fire.svg',
+                      width: context.w(12),
+                      height: context.w(12),
+                      fit: BoxFit.contain,
                     ),
                     SizedBox(width: context.w(2)),
                     Text(

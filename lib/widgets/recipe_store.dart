@@ -21,32 +21,32 @@ class RecipeStore {
       badge: '9 - 11 Bulan',
     ),
     RecipeItem(
-      title: 'Kue ubi keju',
+      title: 'Kue Ubi Keju',
       imagePath: 'assets/images/kue-ubi-keju.png',
       badge: '9 - 11 Bulan',
     ),
     RecipeItem(
-      title: 'Jagung',
+      title: 'Jagung Kukus',
       imagePath: 'assets/images/jagung-kukus.png',
       badge: '9 - 11 Bulan',
     ),
     RecipeItem(
-      title: 'Pepaya lumat',
+      title: 'Pepaya Lumat',
       imagePath: 'assets/images/pepaya-lumat.png',
       badge: '6 Bulan',
     ),
     RecipeItem(
-      title: 'Telur santan pisang',
+      title: 'Telur Santan Pisang',
       imagePath: 'assets/images/telur-santan-pisang.png',
       badge: '9 - 11 Bulan',
     ),
     RecipeItem(
-      title: 'Tahu ayam wortel',
+      title: 'Tahu Ayam Wortel',
       imagePath: 'assets/images/tahu-ayam-wortel.png',
       badge: '7 - 8 Bulan',
     ),
     RecipeItem(
-      title: 'Egg potato mash',
+      title: 'Egg Potato Mash',
       imagePath: 'assets/images/egg-potato-mash.png',
       badge: '12+ Bulan',
     ),

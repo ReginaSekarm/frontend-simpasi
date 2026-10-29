@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart'; 
 
 import '../../widgets/bottom_nav.dart';
 import '../../widgets/recipe_store.dart';
@@ -44,6 +45,24 @@ class RecipeDetailData {
   });
 
   static RecipeDetailData fromTitle(String title) {
+    if (title.toLowerCase().contains('pepaya')) {
+      return const RecipeDetailData(
+        bahan: [
+          'Pepaya matang: 30–50 gram (pilih yang manis dan matang sempurna)',
+        ],
+        langkah: [
+          'Kupas kulit pepaya dan buang bijinya hingga bersih.',
+          'Potong kecil-kecil, lalu lumatkan menggunakan sendok/garpu atau saring menggunakan saringan kawat hingga bertekstur halus.',
+          'Siap disajikan sebagai camilan/menu pendamping',
+        ],
+        kalori: '80',
+        protein: '3,5',
+        karbohidrat: '8',
+        lemak: '3,5',
+        tips: 'Buah pepaya lumat sebaiknya disajikan segar dan tidak disimpan terlalu lama karena dapat mengalami oksidasi (berubah warna/rasa) dan nutrisinya berkurang. Jika ada sisa pepaya utuh, simpan dalam wadah tertutup di kulkas maksimal 1–2 hari.',
+      );
+    }
+
     return const RecipeDetailData(
       bahan: [
         '130gr ubi ungu',
@@ -74,12 +93,14 @@ class DetailResepScreen extends StatefulWidget {
   final String title;
   final String imagePath;
   final String badge;
+  final bool openComments; // 👈 1. TAMBAHKAN VARIABEL INI
 
   const DetailResepScreen({
     super.key,
     required this.title,
     required this.imagePath,
     required this.badge,
+    this.openComments = false, // 👈 2. BERI NILAI DEFAULT FALSE
   });
 
   @override
@@ -87,7 +108,6 @@ class DetailResepScreen extends StatefulWidget {
 }
 
 class _DetailResepScreenState extends State<DetailResepScreen> {
-  // Warna dari Figma
   static const Color primaryRed  = Color(0xFFD45060);
   static const Color bgCream     = Color(0xFFFFF1B5);
   static const Color badgeText   = Color(0xFFDE801A);
@@ -98,21 +118,27 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
   static const Color heartRed    = Color(0xFFDD2E44);
   static const Color lampOrange  = Color(0xFFF1A038);
 
-  int _tab = 0; // 0 = Bahan, 1 = Langkah
+  int _tab = 0; 
   late RecipeDetailData _data;
 
   @override
   void initState() {
     super.initState();
     _data = RecipeDetailData.fromTitle(widget.title);
+    
+    // 👇 3. TAMBAHKAN LOGIKA INI UNTUK OTOMATIS BUKA KOMENTAR
+    if (widget.openComments) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _openKomentarSheet();
+      });
+    }
   }
 
-  // ================= OPEN KOMENTAR SHEET =================
   void _openKomentarSheet() {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,             // biar bisa tinggi mengikuti konten
-      backgroundColor: Colors.transparent,  // biar radius dari Container sendiri
+      isScrollControlled: true,             
+      backgroundColor: Colors.transparent,  
       barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (_) => KomentarSheet(recipeTitle: widget.title),
     );
@@ -122,10 +148,9 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SizedBox.expand(               // fix navbar naik saat konten pendek
+      body: SizedBox.expand(               
         child: Stack(
           children: [
-            // ================= KONTEN SCROLL =================
             SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,17 +164,16 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
                   _buildListContent(),
                   const SizedBox(height: 42),
                   _buildNutritionBox(),
-                  const SizedBox(height: 140), // ruang bottom nav
+                  const SizedBox(height: 140), 
                 ],
               ),
             ),
 
-            // ================= CHAT FAB =================
             Positioned(
               bottom: 90,
               right: 15,
               child: GestureDetector(
-                onTap: _openKomentarSheet,   // 👈 WIRING KE SHEET
+                onTap: _openKomentarSheet,   
                 behavior: HitTestBehavior.opaque,
                 child: Container(
                   width: 63,
@@ -165,16 +189,21 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.chat_bubble_outline,
-                    color: textBlack,
-                    size: 30,
+                  child: Center(
+                    child: SvgPicture.asset(
+                      'assets/images/chat-komentar.svg', 
+                      width: 30,
+                      height: 30,
+                      colorFilter: const ColorFilter.mode(
+                        textBlack,
+                        BlendMode.srcIn,
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
 
-            // ================= BOTTOM NAV =================
             BottomNav(
               currentIndex: 1,
               onTap: (i) {
@@ -197,78 +226,78 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
     );
   }
 
-  // ================= IMAGE HEADER =================
   Widget _buildImageHeader(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
 
-    return SizedBox(
-      height: 250,
-      width: double.infinity,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              widget.imagePath,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Container(color: const Color(0xFFD9D9D9)),
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(28.4),
+        bottomRight: Radius.circular(28.4),
+      ),
+      child: SizedBox(
+        height: 250,
+        width: double.infinity,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                widget.imagePath,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    Container(color: const Color(0xFFD9D9D9)),
+              ),
             ),
-          ),
-
-          // Tombol BACK
-          Positioned(
-            top: topPad + 10,
-            left: 5,
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              behavior: HitTestBehavior.opaque,
-              child: const SizedBox(
-                width: 40,
-                height: 40,
-                child: Icon(
-                  Icons.arrow_back_ios_new,
-                  size: 22,
-                  color: textBlack,
+            Positioned(
+              top: topPad + 10,
+              left: 5,
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                behavior: HitTestBehavior.opaque,
+                child: const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Icon(
+                    Icons.arrow_back_ios_new,
+                    size: 22,
+                    color: textBlack,
+                  ),
                 ),
               ),
             ),
-          ),
-
-          // Tombol HEART
-          Positioned(
-            top: topPad + 10,
-            right: 18,
-            child: ValueListenableBuilder<Set<String>>(
-              valueListenable: RecipeStore.favorites,
-              builder: (_, favs, __) {
-                final liked = favs.contains(widget.title);
-                return GestureDetector(
-                  onTap: () => RecipeStore.toggle(widget.title),
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
+            Positioned(
+              top: topPad + 10,
+              right: 18,
+              child: ValueListenableBuilder<Set<String>>(
+                valueListenable: RecipeStore.favorites,
+                builder: (_, favs, __) {
+                  final liked = favs.contains(widget.title);
+                  return GestureDetector(
+                    onTap: () => RecipeStore.toggle(widget.title),
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        liked ? Icons.favorite : Icons.favorite_border,
+                        size: 22,
+                        color: liked ? heartRed : textBlack,
+                      ),
                     ),
-                    alignment: Alignment.center,
-                    child: Icon(
-                      liked ? Icons.favorite : Icons.favorite_border,
-                      size: 22,
-                      color: liked ? heartRed : textBlack,
-                    ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // ================= TITLE + BADGE =================
   Widget _buildTitleRow() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(31, 0, 24, 0),
@@ -308,7 +337,6 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
     );
   }
 
-  // ================= TABS =================
   Widget _buildTabs() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 30),
@@ -353,7 +381,6 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
     );
   }
 
-  // ================= LIST =================
   Widget _buildListContent() {
     final items = _tab == 0 ? _data.bahan : _data.langkah;
     return Column(
@@ -363,22 +390,25 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
   }
 
   Widget _buildBulletItem(String text) {
-    return SizedBox(
-      height: 35,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14), 
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start, 
         children: [
           const SizedBox(width: 30),
-          SizedBox(
-            width: 16,
-            height: 16,
-            child: Center(
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: primaryRed,
-                  shape: BoxShape.circle,
+          Padding(
+            padding: const EdgeInsets.only(top: 4), 
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: Center(
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: primaryRed,
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
             ),
@@ -391,7 +421,7 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
                 color: textBlack,
-                height: 35 / 15,
+                height: 20 / 15, 
               ),
             ),
           ),
@@ -401,7 +431,6 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
     );
   }
 
-  // ================= NUTRITION =================
   Widget _buildNutritionBox() {
     return Container(
       width: double.infinity,

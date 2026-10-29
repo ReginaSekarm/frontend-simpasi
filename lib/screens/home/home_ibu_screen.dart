@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart' as google_fonts;
 import 'package:flutter_svg/flutter_svg.dart';
@@ -11,6 +12,7 @@ import '../../widgets/data_menu_dropdown.dart';
 import '../../widgets/hapus_data_dialog.dart';
 import '../../widgets/initial_avatar.dart';
 import '../../widgets/menu_recommendation_card.dart';
+import '../../widgets/notification_icon.dart'; // 👈 TAMBAHKAN IMPORT INI
 import '../../widgets/tambah_data_anak_sheet.dart';
 import '../ai/tanya_ai_screen.dart';
 import '../koleksi/koleksi_screen.dart';
@@ -21,7 +23,7 @@ import '../profil/profil_screen.dart';
 import '../riwayat/riwayat_screen.dart';
 
 class HomeIbuScreen extends StatefulWidget {
-  final bool showLoginSuccess; // true kalau baru berhasil login
+  final bool showLoginSuccess;
 
   const HomeIbuScreen({super.key, this.showLoginSuccess = false});
 
@@ -30,7 +32,6 @@ class HomeIbuScreen extends StatefulWidget {
 }
 
 class _HomeIbuScreenState extends State<HomeIbuScreen> {
-  // Warna dari Figma
   static const Color primaryRed = Color(0xFFD45060);
   static const Color bgPeach    = Color(0xFFFCEBD5);
   static const Color bgTeal     = Color(0xFF8BDFDD);
@@ -42,7 +43,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   static const Color textBlack71 = Color(0xB5000000);
   static const Color textBlack50 = Color(0x80000000);
 
-  // ================= DATA ANAK (DUMMY) =================
   final List<ChildData> _children = [
     ChildData(
       nama: 'Alaia',
@@ -76,10 +76,8 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   bool _showDataMenu = false;
 
   bool get _hasChild => _children.isNotEmpty;
-
   ChildData get _currentChild => _children[_currentChildIndex];
 
-  // ================= SINKRONISASI CHILD STORE =================
   void _syncCurrentChild() {
     if (_hasChild) {
       ChildStore.setCurrent(_currentChild.nama);
@@ -93,7 +91,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     super.initState();
     _syncCurrentChild();
 
-    // Tampilkan snackbar "Login Berhasil" setelah frame pertama selesai
     if (widget.showLoginSuccess) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _showLoginSuccessSnackBar();
@@ -109,7 +106,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     _syncCurrentChild();
   }
 
-  // ================= TAMBAH ANAK =================
   Future<void> _openTambahAnak() async {
     if (_children.length >= 2) {
       _snack('Maksimal 2 data anak');
@@ -145,7 +141,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     }
   }
 
-  // ================= UBAH DATA ANAK =================
   Future<void> _openUbahAnak() async {
     setState(() => _showDataMenu = false);
 
@@ -195,7 +190,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  // ================= SNACKBAR LOGIN BERHASIL =================
   void _showLoginSuccessSnackBar() {
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
@@ -207,16 +201,14 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           padding: EdgeInsets.zero,
-          duration: const Duration(seconds: 2), // Tutup otomatis
-          // Posisi di dasar layar, menimpa bottom nav (sama seperti contoh).
-          // Ubah angka 12 kalau mau lebih naik / turun.
+          duration: const Duration(seconds: 2),
           margin: EdgeInsets.fromLTRB(20, 0, 20, 12 + bottomInset),
           content: Center(
             child: Container(
               width: context.w(275),
               height: context.w(44),
               decoration: BoxDecoration(
-                color: const Color(0xFF77B255), // Hijau
+                color: const Color(0xFF77B255),
                 borderRadius: BorderRadius.circular(context.w(17)),
               ),
               child: Row(
@@ -245,7 +237,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
       );
   }
 
-  // ================= HAPUS ANAK =================
   Future<void> _hapusAnak() async {
     setState(() => _showDataMenu = false);
 
@@ -259,7 +250,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     _syncCurrentChild();
   }
 
-  // ================= BUKA AI =================
   Future<void> _openAi() async {
     if (!_hasChild) {
       _snack('Tambahkan data anak dulu ya');
@@ -291,6 +281,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: false,
       body: SizedBox.expand(
         child: Stack(
           children: [
@@ -307,7 +298,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
               ),
             ),
 
-            // ================= AI FAB =================
             Positioned(
               bottom: context.w(90) + bottomPad,
               right: context.w(15),
@@ -328,11 +318,10 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
                       ),
                     ],
                   ),
-                  // 👇 ICON AI
                   child: Padding(
                     padding: EdgeInsets.all(context.w(12)),
-                    child: SvgPicture.asset(
-                      'assets/images/AI.svg',
+                    child: Image.asset(
+                      'assets/images/AI.png',
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -340,7 +329,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
               ),
             ),
 
-            // ================= BOTTOM NAV =================
             BottomNav(
               currentIndex: 2,
               onTap: (i) {
@@ -360,17 +348,22 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
               },
             ),
 
-            // ================= TAP-AWAY =================
             if (_showDataMenu)
               Positioned.fill(
                 child: GestureDetector(
                   onTap: () => setState(() => _showDataMenu = false),
                   behavior: HitTestBehavior.opaque,
-                  child: Container(color: Colors.transparent),
+                  child: ClipRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 0, sigmaY: 0),
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.10),
+                      ),
+                    ),
+                  ),
                 ),
               ),
 
-            // ================= DROPDOWN UBAH / HAPUS =================
             if (_showDataMenu && _hasChild)
               Positioned(
                 top: topPad + context.w(96),
@@ -386,7 +379,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  // ================= HEADER + KARTU ANAK =================
   Widget _buildHeaderSection(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
 
@@ -454,22 +446,14 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
           Positioned(
             top: topPad + context.w(28),
             right: context.w(27),
-            child: GestureDetector(
+            child: NotificationIconButton(
               onTap: () {
                 Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => const NotifikasiScreen()));
               },
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: EdgeInsets.all(context.w(4)),
-                child: Icon(
-                  Icons.notifications_outlined,
-                  color: Colors.white,
-                  size: context.w(25),
-                ),
-              ),
             ),
           ),
+          // 👆 SAMPAI SINI
 
           Positioned(
             top: topPad + context.w(116),
@@ -493,7 +477,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
                 : _buildEmptyStateCard(),
           ),
 
-          // 👇 MASKOT KEPALA BAYI — pakai SvgPicture, BUKAN Image.asset
           if (_hasChild)
             Positioned(
               top: topPad + context.w(100),
@@ -514,7 +497,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  // ================= EMPTY STATE CARD =================
   Widget _buildEmptyStateCard() {
     return Material(
       color: bgPeach,
@@ -527,8 +509,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 👇 ICON PLUS — pakai SvgPicture + colorFilter
-              //    Kalau SVG-nya sudah berwarna #D45060, hapus colorFilter
               SvgPicture.asset(
                 'assets/images/icon-plus.svg',
                 width: context.w(60),
@@ -556,72 +536,82 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  // ================= KARTU DATA ANAK =================
   Widget _buildChildDataContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: EdgeInsets.only(left: context.w(69)),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _currentChild.nama,
-                    maxLines: 1,
-                    style: google_fonts.GoogleFonts.inter(
-                      fontSize: context.sp(20),
-                      fontWeight: FontWeight.w700,
-                      color: textBrown,
-                      height: 24 / 20,
+          child: SizedBox(
+            height: context.w(26), 
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            _currentChild.nama,
+                            maxLines: 1,
+                            style: google_fonts.GoogleFonts.inter(
+                              fontSize: context.sp(20),
+                              fontWeight: FontWeight.w700,
+                              color: textBrown,
+                              height: 24 / 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: context.w(8)),
+                      Container(
+                        height: context.w(17),
+                        padding: EdgeInsets.symmetric(horizontal: context.w(8)),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(context.w(5)),
+                        ),
+                        child: Text(
+                          _currentChild.status,
+                          maxLines: 1,
+                          style: google_fonts.GoogleFonts.inter(
+                            fontSize: context.sp(10),
+                            fontWeight: FontWeight.w600,
+                            color: badgeGreen,
+                            height: 12 / 10,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => setState(() => _showDataMenu = !_showDataMenu),
+                  child: SizedBox(
+                    width: context.w(26),
+                    height: context.w(26),
+                    child: Center(
+                      child: SvgPicture.asset(
+                        'assets/images/settings.svg',
+                        width: context.w(25),
+                        height: context.w(25),
+                        fit: BoxFit.contain,
+                        colorFilter: ColorFilter.mode(
+                          textBlack71,
+                          BlendMode.srcIn,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              SizedBox(width: context.w(8)),
-              Container(
-                height: context.w(17),
-                padding: EdgeInsets.symmetric(horizontal: context.w(8)),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(context.w(5)),
-                ),
-                child: Text(
-                  _currentChild.status,
-                  maxLines: 1,
-                  style: google_fonts.GoogleFonts.inter(
-                    fontSize: context.sp(10),
-                    fontWeight: FontWeight.w600,
-                    color: badgeGreen,
-                    height: 12 / 10,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              InkWell(
-                customBorder: const CircleBorder(),
-                onTap: () => setState(() => _showDataMenu = !_showDataMenu),
-                child: Padding(
-                  padding: EdgeInsets.all(context.w(4)),
-                  // 👇 ICON SETTINGS dari assets/images/settings.svg
-                  child: SvgPicture.asset(
-                    'assets/images/settings.svg',
-                    width: context.w(25),
-                    height: context.w(25),
-                    fit: BoxFit.contain,
-                    colorFilter: const ColorFilter.mode(
-                      textBlack71,
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
 
@@ -683,7 +673,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  // ================= KOTAK STATISTIK =================
   Widget _buildStatItem(String label, String value, String unit) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -738,7 +727,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  // ================= REKOMENDASI MENU =================
   Widget _buildMenuSection() {
     const menus = [
       {
@@ -747,7 +735,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
         'badge': '9 - 11 Bulan',
       },
       {
-        'title': 'Kue ubi keju',
+        'title': 'Kue Ubi Keju',
         'imagePath': 'assets/images/kue-ubi-keju.png',
         'badge': '9 - 11 Bulan',
       },
@@ -796,7 +784,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
                     vertical: context.w(4),
                   ),
                   child: Text(
-                    'Lihat Semua',
+                    'Jelajahi Menu',
                     maxLines: 1,
                     style: google_fonts.GoogleFonts.inter(
                       fontSize: context.sp(11),
@@ -841,7 +829,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  // ================= BANNER STUNTING =================
   Widget _buildStuntingBanner() {
     return Container(
       width: double.infinity,
@@ -909,8 +896,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
                   borderRadius: BorderRadius.circular(context.w(20)),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(context.w(20)),
-                    // 👇 Langsung buka Riwayat di tab "Pemeriksaan Stunting"
-                    //    (initialTab: 0 = Pencarian, 1 = Pemeriksaan Stunting)
                     onTap: () {
                       Navigator.of(context).push(MaterialPageRoute(
                           builder: (_) =>

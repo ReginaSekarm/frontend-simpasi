@@ -113,7 +113,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
                   // Maskot
                   Image.asset(
-                    'assets/images/start-face-forkspoon.png',
+                    'assets/images/start-melet-buka.png',
                     height: 76,
                     errorBuilder: (_, __, ___) => const Icon(
                       Icons.child_care,

@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart' as google_fonts;
 import '../../widgets/popup_status.dart';
 import '../home/home_ibu_screen.dart';
 import 'reset_password_screen.dart';
+import 'register.dart'; // 👈 WAJIB DIIMPORT UNTUK FALLBACK KEMBALI KE REGISTER
 
 class OtpVerificationScreen extends StatefulWidget {
   final String email;
@@ -28,6 +29,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   static const Color accent = Color(0xFFF1A038);
   static const Color grey = Color(0xFF8F8F8F);
   static const Color subGrey = Color(0xFF797777);
+  static const Color errorRed = Color(0xFFFF0000); 
 
   final List<TextEditingController> _otpControllers =
       List.generate(4, (_) => TextEditingController());
@@ -35,6 +37,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   int _secondsRemaining = 60;
   Timer? _timer;
+  
+  bool _isError = false; 
 
   @override
   void initState() {
@@ -76,14 +80,19 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   void _onVerify() {
     final code = _otpControllers.map((c) => c.text).join();
 
-    // Validasi: harus 4 digit
     if (code.length < 4) {
-      showStatusPopup(context, type: PopupType.sendFailed);
+      setState(() => _isError = true);
       return;
     }
 
+    if (code != '2230') {
+      setState(() => _isError = true);
+      return;
+    }
+
+    setState(() => _isError = false);
+
     if (widget.isFromForgotPassword) {
-      // Alur Lupa Password → Reset Password
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -91,7 +100,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         ),
       );
     } else {
-      // Alur Registrasi → popup sukses → Home
       showStatusPopup(
         context,
         type: PopupType.emailVerifySuccess,
@@ -122,7 +130,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: grey, width: 1),
+          border: Border.all(
+            color: _isError ? errorRed : grey, 
+            width: 1,
+          ),
           borderRadius: BorderRadius.circular(10),
         ),
         child: TextField(
@@ -144,6 +155,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           onChanged: (value) {
+            if (_isError) setState(() => _isError = false);
+
             if (value.isNotEmpty && index < 3) {
               _focusNodes[index + 1].requestFocus();
             } else if (value.isEmpty && index > 0) {
@@ -188,7 +201,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
                   // ================= MASKOT =================
                   Image.asset(
-                    'assets/images/start-face-forkspoon.png',
+                    'assets/images/start-melet-buka.png',
                     height: 76,
                     errorBuilder: (_, __, ___) => const Icon(
                       Icons.child_care,
@@ -276,6 +289,21 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             ],
                           ],
                         ),
+                        
+                        // ================= TEKS ERROR =================
+                        if (_isError) ...[
+                          const SizedBox(height: 7),
+                          Text(
+                            'Kode yang Anda masukkan tidak cocok. Periksa lagi lalu masukkan ulang.',
+                            style: google_fonts.GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w400,
+                              color: errorRed,
+                              height: 12 / 10,
+                            ),
+                          ),
+                        ],
+                        
                         const SizedBox(height: 29),
 
                         // ================= KIRIM ULANG KODE =================
@@ -287,9 +315,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               style: google_fonts.GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: _secondsRemaining == 0
-                                    ? primary
-                                    : subGrey,
+                                color: subGrey,
                               ),
                             ),
                           ),
@@ -359,7 +385,18 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     alignment: Alignment.centerLeft,
                     padding: const EdgeInsets.only(left: 10),
                     child: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
+                      onTap: () {
+                        if (Navigator.of(context).canPop()) {
+                          Navigator.of(context).pop();
+                        } else {
+                          // Jika stack kosong, paksa kembali ke Register
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              builder: (_) => const RegisterScreen(),
+                            ),
+                          );
+                        }
+                      },
                       child: Text(
                         widget.isFromForgotPassword
                             ? 'Ubah alamat email'

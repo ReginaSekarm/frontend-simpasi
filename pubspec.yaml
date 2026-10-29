@@ -32,14 +32,10 @@ flutter:
 
 flutter_native_splash:
   color: "#FFFFFF"
-  image: assets/images/start-face-forkspoon.png
   color_dark: "#FFFFFF"
-  image_dark: assets/images/start-face-forkspoon.png
   android_12:
-    image: assets/images/start-face-forkspoon.png
-    icon_background_color: "#FFFFFF"
-    image_dark: assets/images/start-face-forkspoon.png
-    icon_background_color_dark: "#FFFFFF"
+    color: "#FFFFFF"
+    color_dark: "#FFFFFF"
   android: true
   ios: true
   web: false

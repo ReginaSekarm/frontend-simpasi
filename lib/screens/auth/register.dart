@@ -2,7 +2,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-// Path import diubah karena sekarang register.dart berada di dalam folder auth/
 import 'otp_verification_screen.dart';
 import 'login.dart';
 
@@ -341,8 +340,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     // Pindah ke layar Verifikasi OTP
-    // Catatan: dari alur registrasi, isFromForgotPassword = false (default)
-    // sehingga akan menampilkan tulisan "Kembali" di bawah, bukan "Ubah alamat email"
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -389,7 +386,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   // Maskot
                   Image.asset(
-                    'assets/images/start-face-forkspoon.png',
+                    'assets/images/start-melet-buka.png',
                     height: 76,
                     errorBuilder: (_, _, _) => const Icon(
                       Icons.child_care,

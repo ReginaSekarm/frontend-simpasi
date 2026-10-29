@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart' as google_fonts;
+import 'package:flutter_svg/flutter_svg.dart'; // 👈 WAJIB DITAMBAHKAN UNTUK SVG
 
 class DataMenuDropdown extends StatelessWidget {
   final VoidCallback onEdit;
@@ -37,7 +38,7 @@ class DataMenuDropdown extends StatelessWidget {
           children: [
             Expanded(
               child: _buildItem(
-                icon: Icons.edit_outlined,
+                iconPath: 'assets/images/edit-pencil.svg', 
                 label: 'Ubah Data',
                 color: _textBlack71,
                 onTap: onEdit,
@@ -49,7 +50,7 @@ class DataMenuDropdown extends StatelessWidget {
             Container(height: 0.886, color: _dividerGrey),
             Expanded(
               child: _buildItem(
-                icon: Icons.delete,
+                iconPath: 'assets/images/trash-fill.svg', 
                 label: 'Hapus Data',
                 color: _redDelete,
                 onTap: onDelete,
@@ -65,7 +66,7 @@ class DataMenuDropdown extends StatelessWidget {
   }
 
   Widget _buildItem({
-    required IconData icon,
+    required String iconPath, 
     required String label,
     required Color color,
     required VoidCallback onTap,
@@ -78,7 +79,13 @@ class DataMenuDropdown extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: color),
+            SvgPicture.asset(
+              iconPath,
+              width: 18,
+              height: 18,
+              fit: BoxFit.contain,
+              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+            ),
             const SizedBox(width: 6),
             Expanded(
               child: Text(

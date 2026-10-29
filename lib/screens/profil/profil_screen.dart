@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
+import '../../widgets/notification_icon.dart'; // 👈 TAMBAHKAN IMPORT INI
 import '../koleksi/koleksi_screen.dart';
 import '../menu/menu_screen.dart';
 import '../riwayat/riwayat_screen.dart';
@@ -9,7 +10,7 @@ import 'edit_profil_screen.dart';
 import 'pengaturan_screen.dart';
 import '../notifikasi/notifikasi_screen.dart';
 
-// Mock GoogleFonts (Jika kamu menggunakan package google_fonts asli, hapus class ini dan import package-nya)
+// Mock GoogleFonts
 class GoogleFonts {
   static TextStyle inter({
     double? fontSize,
@@ -19,7 +20,7 @@ class GoogleFonts {
     TextDecoration? decoration,
   }) {
     return TextStyle(
-      fontFamily: 'Inter', // Tambahkan ini agar font Inter terbaca
+      fontFamily: 'Inter', 
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -52,6 +53,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: false,
       body: SizedBox.expand(
         child: Stack(
           children: [
@@ -125,7 +127,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
           // ---- Title "Profil" + bell ----
           Positioned(
             top: topPad + context.w(20),
-            left: context.w(44),
+            left: context.w(28),
             right: context.w(16),
             child: SizedBox(
               height: context.w(40),
@@ -137,11 +139,11 @@ class _ProfilScreenState extends State<ProfilScreen> {
                       fontSize: context.sp(24),
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
-                      height: 29 / 24,
+                      height: 32 / 24,
                     ),
                   ),
                   const Spacer(),
-                  GestureDetector(
+                  NotificationIconButton(
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -149,15 +151,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
                         ),
                       );
                     },
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: EdgeInsets.all(context.w(4)),
-                      child: Icon(
-                        Icons.notifications_outlined,
-                        color: Colors.white,
-                        size: context.w(25),
-                      ),
-                    ),
                   ),
                   SizedBox(width: context.w(15)),
                 ],
@@ -346,7 +339,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
     );
   }
 
-  // ================= TOMBOL KELUAR (DIPERBAIKI) =================
+  // ================= TOMBOL KELUAR =================
   Widget _buildKeluarButton(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.w(20)),
@@ -355,19 +348,19 @@ class _ProfilScreenState extends State<ProfilScreen> {
           // ================= POPUP KONFIRMASI KUSTOM SESUAI FIGMA =================
           showDialog(
             context: context,
-            barrierDismissible: true, // Klik di luar popup untuk menutup
+            barrierDismissible: true, 
             builder: (_) => Dialog(
-              backgroundColor: Colors.transparent, // Menghilangkan background bawaan dialog
+              backgroundColor: Colors.transparent, 
               elevation: 0,
               child: Container(
-                width: context.w(259), // Lebar sesuai Figma (259px)
+                width: context.w(259), 
                 padding: EdgeInsets.symmetric(
                   horizontal: context.w(32), 
                   vertical: context.w(30)
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(context.w(10)), // Radius 10px
+                  borderRadius: BorderRadius.circular(context.w(10)), 
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -433,7 +426,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                             height: context.w(29.6),
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFF0020), // Warna merah sesuai Figma
+                              color: const Color(0xFFFF0020), 
                               borderRadius: BorderRadius.circular(context.w(11.02)),
                             ),
                             child: Text(
@@ -453,7 +446,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
               ),
             ),
           );
-          // ========================================================================
         },
         behavior: HitTestBehavior.opaque,
         child: Container(

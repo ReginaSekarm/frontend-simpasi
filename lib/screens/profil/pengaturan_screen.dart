@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'ganti_kata_sandi.dart';
 import 'pusat_bantuan_screen.dart';
 import 'tentang_kami_screen.dart';
-import '../auth/login.dart'; // Pastikan path ini sesuai dengan struktur folder Ibu
 
 class GoogleFonts {
   static TextStyle inter({
@@ -35,8 +34,6 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
   static const Color textBlack   = Color(0xFF000000);
   static const Color textGrey    = Color(0xFF8F8F8F);
   static const Color dividerGrey = Color(0xFF8F8F8F);
-  static const Color exitRed     = Color(0xFFFF0000);
-  static const Color exitBg      = Color(0x1AFF001F); // rgba(255,0,31,0.1)
 
   @override
   Widget build(BuildContext context) {
@@ -54,13 +51,7 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
           // ================= KARTU MENU =================
           _buildMenuCard(),
 
-          // Spacer → push tombol hapus ke bawah
           const Spacer(),
-
-          // ================= TOMBOL HAPUS AKUN (BAGIAN INI YANG TADI HILANG) =================
-          _buildHapusAkunButton(context),
-
-          const SizedBox(height: 35),
         ],
       ),
     );
@@ -205,154 +196,6 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
                 Icons.chevron_right,
                 size: 26,
                 color: textBlack,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ================= TOMBOL HAPUS AKUN =================
-  Widget _buildHapusAkunButton(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: GestureDetector(
-        onTap: () {
-          // ================= POPUP KONFIRMASI KUSTOM =================
-          showDialog(
-            context: context,
-            barrierDismissible: true,
-            builder: (_) => Dialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              child: Container(
-                width: 259,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32, 
-                  vertical: 30
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Judul Popup
-                    Text(
-                      'Hapus Akun?',
-                      style: GoogleFonts.inter(
-                        fontSize: 17.76,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black.withValues(alpha: 0.71),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    
-                    // Deskripsi Popup
-                    Text(
-                      'Semua data kamu akan dihapus secara permanen dan tidak bisa dipulihkan.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 13.32,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF8F8F8F),
-                        height: 16 / 13.32,
-                      ),
-                    ),
-                    const SizedBox(height: 25),
-                    
-                    // Tombol Aksi (Batal & Hapus)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Tombol Batal
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
-                            width: 92.5,
-                            height: 29.6,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFD9D9D9).withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(11.02),
-                            ),
-                            child: Text(
-                              'Batal',
-                              style: GoogleFonts.inter(
-                                fontSize: 13.32,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF8F8F8F),
-                              ),
-                            ),
-                          ),
-                        ),
-                        
-                        // Tombol Hapus (DI SINI LOGIKA PINDAH KE LOGIN DITARUH)
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.pop(context); // 1. Tutup dialog konfirmasi
-                            
-                            // 2. Pindah ke LoginScreen dan hapus semua history navigasi
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (_) => const LoginScreen(showDeletedSuccess: true),
-                              ),
-                              (route) => false, // Menghapus semua rute sebelumnya
-                            );
-                          },
-                          child: Container(
-                            width: 92.5,
-                            height: 29.6,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF0020),
-                              borderRadius: BorderRadius.circular(11.02),
-                            ),
-                            child: Text(
-                              'Ya, hapus',
-                              style: GoogleFonts.inter(
-                                fontSize: 13.32,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-          // ================================================================
-        },
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          height: 50,
-          decoration: BoxDecoration(
-            color: exitBg,
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.delete_outline,
-                size: 26,
-                color: exitRed,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Hapus akun',
-                style: GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w500,
-                  color: exitRed,
-                  height: 24 / 20,
-                ),
               ),
             ],
           ),

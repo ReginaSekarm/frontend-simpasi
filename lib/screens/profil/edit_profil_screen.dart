@@ -43,10 +43,13 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
   static const Color textBlack     = Color(0xFF000000);
   static const Color textBrown     = Color(0xFF9E5665);
   static const Color inputBg       = Color(0x99FFFFFF);
+  static const Color disabledBtn   = Color(0xFFD9D9D9);
 
   late TextEditingController _namaC;
   late TextEditingController _emailC;
   late TextEditingController _hpC;
+
+  bool _hasChanges = false;
 
   @override
   void initState() {
@@ -64,6 +67,20 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     super.dispose();
   }
 
+  // FUNGSI CEK PERUBAHAN
+  void _checkChanges() {
+    final hasChanged = 
+        _namaC.text != widget.namaLengkap ||
+        _emailC.text != (widget.email ?? '') ||
+        _hpC.text != (widget.noHp ?? '');
+
+    if (hasChanged != _hasChanges) {
+      setState(() {
+        _hasChanges = hasChanged;
+      });
+    }
+  }
+
   void _simpan() {
     final nama = _namaC.text.trim();
     if (nama.isEmpty) {
@@ -73,6 +90,123 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
       return;
     }
     Navigator.of(context).pop(nama);
+  }
+
+  // ================= FUNGSI POPUP KONFIRMASI (SESUAI FIGMA 100%) =================
+  Future<void> _onBackPressed() async {
+    // Jika tidak ada perubahan, langsung kembali
+    if (!_hasChanges) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    // Jika ada perubahan, munculkan popup custom sesuai Figma
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: EdgeInsets.zero, 
+        child: Container(
+          width: context.w(350), // Lebar luar sesuai Figma
+          padding: EdgeInsets.symmetric(
+            horizontal: context.w(31.5), // (350 - 287) / 2 = 31.5
+            vertical: context.w(30.24), // (190.42 - 129.95) / 2 = 30.235
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(context.w(7.62)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Judul
+              Text(
+                'Batalkan Perubahan?',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: context.sp(19.95),
+                  fontWeight: FontWeight.w600,
+                  color: textBlack,
+                  height: 24 / 19.95,
+                ),
+              ),
+              SizedBox(height: context.w(11)), // Gap sesuai Figma
+              
+              // Deskripsi
+              Text(
+                'Perubahan yang belum disimpan akan hilang.\nYakin ingin membatalkan?',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: context.sp(13.3),
+                  fontWeight: FontWeight.w400,
+                  color: textBlack,
+                  height: 16 / 13.3,
+                ),
+              ),
+              SizedBox(height: context.w(11)), // Gap sesuai Figma
+              
+              // Tombol Aksi
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Tombol Tetap di sini
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx, false),
+                    child: Container(
+                      width: context.w(129),
+                      height: context.w(35.98),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD9D9D9),
+                        borderRadius: BorderRadius.circular(context.w(8.31)),
+                      ),
+                      child: Text(
+                        'Tetap di sini',
+                        style: GoogleFonts.inter(
+                          fontSize: context.sp(14.96),
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF797777).withValues(alpha: 0.8),
+                          height: 18 / 14.96,
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  // Tombol Ya, Batalkan
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx, true),
+                    child: Container(
+                      width: context.w(129),
+                      height: context.w(35.98),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF0020),
+                        borderRadius: BorderRadius.circular(context.w(8.31)),
+                      ),
+                      child: Text(
+                        'Ya, Batalkan',
+                        style: GoogleFonts.inter(
+                          fontSize: context.sp(14.96),
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          height: 18 / 14.96,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -100,7 +234,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                     top: 0,
                     bottom: 0,
                     child: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
+                      onTap: _onBackPressed,
                       behavior: HitTestBehavior.opaque,
                       child: SizedBox(
                         width: context.w(40),
@@ -181,7 +315,10 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                   // ---- Field: Nama Lengkap ----
                   _buildLabel('Nama Lengkap'),
                   SizedBox(height: context.w(6)),
-                  _buildTextField(controller: _namaC),
+                  _buildTextField(
+                    controller: _namaC,
+                    onChanged: (_) => _checkChanges(),
+                  ),
 
                   SizedBox(height: context.w(26)),
 
@@ -191,6 +328,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                   _buildTextField(
                     controller: _emailC,
                     keyboardType: TextInputType.emailAddress,
+                    onChanged: (_) => _checkChanges(),
                   ),
 
                   SizedBox(height: context.w(26)),
@@ -201,6 +339,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                   _buildTextField(
                     controller: _hpC,
                     keyboardType: TextInputType.phone,
+                    onChanged: (_) => _checkChanges(),
                   ),
 
                   SizedBox(height: context.w(40)),
@@ -218,13 +357,13 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
               MediaQuery.of(context).padding.bottom + context.w(24),
             ),
             child: GestureDetector(
-              onTap: _simpan,
+              onTap: _hasChanges ? _simpan : null,
               behavior: HitTestBehavior.opaque,
               child: Container(
                 height: context.w(60),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: primaryOrange,
+                  color: _hasChanges ? primaryOrange : disabledBtn,
                   borderRadius: BorderRadius.circular(context.w(15)),
                 ),
                 child: Text(
@@ -264,6 +403,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
   Widget _buildTextField({
     required TextEditingController controller,
     TextInputType? keyboardType,
+    required ValueChanged<String> onChanged,
   }) {
     return Container(
       height: context.w(50),
@@ -277,7 +417,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
         child: TextField(
           controller: controller,
           keyboardType: keyboardType,
-          onChanged: (_) => setState(() {}),
+          onChanged: onChanged,
           style: GoogleFonts.inter(
             fontSize: context.sp(16),
             fontWeight: FontWeight.w500,

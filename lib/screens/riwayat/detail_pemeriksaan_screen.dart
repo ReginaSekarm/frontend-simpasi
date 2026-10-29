@@ -52,7 +52,7 @@ class DetailPemeriksaanScreen extends StatelessWidget {
   static const Color primaryRed  = Color(0xFFD45060);
   static const Color bgCream     = Color(0xFFFCEBD5);
   static const Color bgSoftCream = Color(0xFFF7F3EC);
-  static const Color chipBg      = Color(0x80F88B92); // rgba(248,139,146,0.5)
+  static const Color chipBg      = Color(0x80F88B92);
   static const Color textBlack   = Color(0xFF000000);
   static const Color textGrey    = Color(0xFF8F8F8F);
   static const Color textDarkDate= Color(0xFF4B5563);
@@ -85,19 +85,16 @@ class DetailPemeriksaanScreen extends StatelessWidget {
                   _buildHeader(context),
                   const SizedBox(height: 18),
 
-                  // ==== Kartu tanggal + judul ====
                   _buildTopCard(),
 
                   const SizedBox(height: 26),
 
-                  // ==== IDENTITAS BALITA & ORANG TUA ====
                   _buildSectionTitle('IDENTITAS BALITA & ORANG TUA'),
                   const SizedBox(height: 20),
                   _buildIdentitas(),
 
                   const SizedBox(height: 28),
 
-                  // ==== PARAMETER ANTROPOMETRI ====
                   _buildSectionTitle('PARAMETER ANTROPOMETRI'),
                   const SizedBox(height: 25),
                   _buildParameterRow(),
@@ -106,7 +103,6 @@ class DetailPemeriksaanScreen extends StatelessWidget {
 
                   const SizedBox(height: 28),
 
-                  // ==== BAHAN MAKANAN YANG DIREKOMENDASIKAN ====
                   _buildSectionTitle(
                       'BAHAN MAKANAN YANG DIREKOMENDASIKAN'),
                   const SizedBox(height: 22),
@@ -114,20 +110,51 @@ class DetailPemeriksaanScreen extends StatelessWidget {
                   const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      'Ketuk salah satu bahan untuk melihat resep MPASI yang sesuai.',
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: textBlack,
-                        height: 12 / 10,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                          onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const MenuScreen(
+                                fromPemeriksaan: true,
+                                initialIngredients: [
+                                  'Ayam',
+                                  'Telur',
+                                  'Sayuran',
+                                  'Buah',
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Lihat resep MPASI sesuai rekomendasi',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFFE38621),
+                                height: 12 / 10,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.arrow_forward,
+                              size: 12,
+                              color: Color(0xFFE38621),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 28),
 
-                  // ==== KONDISI & TINDAK LANJUT ====
                   _buildSectionTitle('KONDISI & TINDAK LANJUT'),
                   const SizedBox(height: 22),
                   _buildKondisiRow(),
@@ -175,7 +202,6 @@ class DetailPemeriksaanScreen extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Back arrow
           Positioned(
             top: topPad + 60,
             left: 14,
@@ -193,8 +219,6 @@ class DetailPemeriksaanScreen extends StatelessWidget {
               ),
             ),
           ),
-
-          // Judul
           Positioned(
             top: topPad + 55,
             left: 66,
@@ -209,8 +233,6 @@ class DetailPemeriksaanScreen extends StatelessWidget {
               ),
             ),
           ),
-
-          // Subtitle
           Positioned(
             top: topPad + 100,
             left: 66,
@@ -224,8 +246,6 @@ class DetailPemeriksaanScreen extends StatelessWidget {
               ),
             ),
           ),
-
-          // Status badge (kanan atas)
           Positioned(
             top: topPad + 80,
             right: 19,
@@ -264,7 +284,6 @@ class DetailPemeriksaanScreen extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Kotak tanggal
             Container(
               width: 59,
               height: 63,
@@ -297,8 +316,6 @@ class DetailPemeriksaanScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 15),
-
-            // Judul + subtitle
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,7 +372,6 @@ class DetailPemeriksaanScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Baris 1: Nama Lengkap | (kosong)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -364,8 +380,6 @@ class DetailPemeriksaanScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-
-          // Baris 2: Jenis Kelamin | Nama Orang Tua
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -374,12 +388,8 @@ class DetailPemeriksaanScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-
-          // Baris 3: Tempat & Tgl Lahir
           _buildField('Tempat & Tgl Lahir', 'Denpasar, 01/12/2025'),
           const SizedBox(height: 14),
-
-          // Baris 4: Email
           _buildField('Email', 'AjengFebria01@gmail.com'),
         ],
       ),
@@ -415,67 +425,66 @@ class DetailPemeriksaanScreen extends StatelessWidget {
 
   // ================= PARAMETER ANTROPOMETRI =================
   Widget _buildParameterRow() {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: _buildParamCard(beratBadan, 'BB (kg)')),
-        const SizedBox(width: 12),
-        Expanded(child: _buildParamCard(tinggiBadan, 'TB (cm)')),
-        const SizedBox(width: 12),
-        Expanded(child: _buildParamCard(lingkarKepala, 'LK (cm)')),
-        const SizedBox(width: 12),
-        Expanded(child: _buildParamCard(lila, 'LiLA (cm)')),
-      ],
-    ),
-  );
-}
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: _buildParamCard(beratBadan, 'BB (kg)')),
+          const SizedBox(width: 12),
+          Expanded(child: _buildParamCard(tinggiBadan, 'TB (cm)')),
+          const SizedBox(width: 12),
+          Expanded(child: _buildParamCard(lingkarKepala, 'LK (cm)')),
+          const SizedBox(width: 12),
+          Expanded(child: _buildParamCard(lila, 'LiLA (cm)')),
+        ],
+      ),
+    );
+  }
 
-Widget _buildParamCard(String value, String label) {
-  return Container(
-    constraints: const BoxConstraints(minHeight: 50),
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    decoration: BoxDecoration(
-      color: bgSoftCream,
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            value,
-            style: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: textBlack,
-              height: 19 / 16,
+  Widget _buildParamCard(String value, String label) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 50),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: bgSoftCream,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: textBlack,
+                height: 19 / 16,
+              ),
             ),
           ),
-        ),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            label,
-            maxLines: 1,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: textGrey,
-              height: 12 / 10,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: textGrey,
+                height: 12 / 10,
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
-  // ===
-  //============== CATATAN BOX =================
+  // ================= CATATAN BOX =================
   Widget _buildCatatanBox() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),

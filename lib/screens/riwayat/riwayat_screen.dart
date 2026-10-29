@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+// Pastikan import ini sesuai dengan struktur folder Anda
 import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
+import '../../widgets/notification_icon.dart';
 import '../home/home_ibu_screen.dart';
 import '../koleksi/koleksi_screen.dart';
 import '../menu/menu_screen.dart';
 import '../notifikasi/notifikasi_screen.dart';
 import '../profil/profil_screen.dart';
 import 'detail_pemeriksaan_screen.dart';
-import 'detail_pencarian_screen.dart';
+import 'detail_pencarian_screen.dart'; // 👈 WAJIB IMPORT INI
 
 class GoogleFonts {
   static TextStyle inter({
@@ -82,7 +84,6 @@ class PencarianGroup {
 }
 
 class RiwayatScreen extends StatefulWidget {
-  /// 0 = Pencarian, 1 = Pemeriksaan Stunting
   final int initialTab;
 
   const RiwayatScreen({
@@ -112,10 +113,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   static const Color purpleAI     = Color(0xFF9564DD);
   static const Color iconCircleBg = Color(0xA3FFFFFF);
 
-  // Icon AI (sudah berwarna sendiri, jangan diberi colorFilter)
-  static const String _aiIcon = 'assets/images/AI.svg';
-
-  // 0 = Pencarian, 1 = Pemeriksaan Stunting
   late int _tab;
 
   @override
@@ -194,6 +191,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: false,
       body: SizedBox.expand(
         child: Stack(
           children: [
@@ -255,7 +253,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
-      height: topPad + context.w(184),
+      height: topPad + context.w(210),
       decoration: BoxDecoration(
         color: primaryRed,
         borderRadius: BorderRadius.only(
@@ -267,7 +265,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         children: [
           // Baris 1: "Riwayat" + bell
           Positioned(
-            top: topPad + context.w(20),
+            top: topPad + context.w(30),
             left: context.w(28),
             right: context.w(16),
             child: SizedBox(
@@ -284,7 +282,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     ),
                   ),
                   const Spacer(),
-                  GestureDetector(
+                  NotificationIconButton(
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -292,15 +290,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         ),
                       );
                     },
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: EdgeInsets.all(context.w(4)),
-                      child: Icon(
-                        Icons.notifications_outlined,
-                        color: Colors.white,
-                        size: context.w(25),
-                      ),
-                    ),
                   ),
                   SizedBox(width: context.w(15)),
                 ],
@@ -310,20 +299,20 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
 
           // Baris 2: Tab toggle
           Positioned(
-            top: topPad + context.w(90),
+            top: topPad + context.w(110),
             left: context.w(38),
             right: context.w(38),
             child: Container(
-              height: context.w(55),
-              padding: EdgeInsets.all(context.w(7)),
+              height: context.w(75),
+              padding: EdgeInsets.all(context.w(8)),
               decoration: BoxDecoration(
                 color: bgCream,
                 borderRadius: BorderRadius.circular(context.w(20)),
               ),
               child: Row(
                 children: [
-                  _buildTab(context, 0, 'Pencarian'),
-                  _buildTab(context, 1, 'Pemeriksaan\nStunting'),
+                  _buildTab(context, 0, 'Resep AI', 'Resep yang kamu buat'),
+                  _buildTab(context, 1, 'Pemeriksaan', 'Hasil ukur dari posyandu'),
                 ],
               ),
             ),
@@ -333,27 +322,45 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  Widget _buildTab(BuildContext context, int index, String label) {
+  Widget _buildTab(BuildContext context, int index, String title, String subtitle) {
     final active = _tab == index;
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _tab = index),
         behavior: HitTestBehavior.opaque,
         child: Container(
-          alignment: Alignment.center,
+          alignment: Alignment.centerLeft,
+          padding: EdgeInsets.only(left: context.w(16)),
           decoration: BoxDecoration(
             color: active ? bgPinkChip : Colors.transparent,
             borderRadius: BorderRadius.circular(context.w(15)),
           ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: context.sp(13),
-              fontWeight: FontWeight.w600,
-              color: textBlack,
-              height: 16 / 13,
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                textAlign: TextAlign.left,
+                style: GoogleFonts.inter(
+                  fontSize: context.sp(15),
+                  fontWeight: FontWeight.w600,
+                  color: textBlack,
+                  height: 18 / 15,
+                ),
+              ),
+              SizedBox(height: context.w(4)),
+              Text(
+                subtitle,
+                textAlign: TextAlign.left,
+                style: GoogleFonts.inter(
+                  fontSize: context.sp(8.47),
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black.withValues(alpha: 0.5),
+                  height: 10 / 8.47,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -451,9 +458,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 shape: BoxShape.circle,
               ),
               child: Center(
-                // 👇 ICON AI dari assets/images/AI.svg (warna bawaan SVG)
-                child: SvgPicture.asset(
-                  _aiIcon,
+                child: Image.asset(
+                  'assets/images/AI.png', 
                   width: context.w(20),
                   height: context.w(20),
                   fit: BoxFit.contain,
@@ -501,7 +507,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   Text(
                     '${item.jumlahResep} Resep ditemukan',
                     style: GoogleFonts.inter(
-                      fontSize: context.sp(8.5),
+                      fontSize: context.sp(11),
                       fontWeight: FontWeight.w500,
                       color: textBlack,
                       height: 10 / 8.5,

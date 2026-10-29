@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 
 class FilterMenuSheet extends StatefulWidget {
-  const FilterMenuSheet({super.key});
+  final String initialAge;
+  final List<String> initialIngredients;
+
+  const FilterMenuSheet({
+    super.key,
+    this.initialAge = 'Semua',
+    this.initialIngredients = const [],
+  });
 
   @override
   State<FilterMenuSheet> createState() => _FilterMenuSheetState();
@@ -36,8 +43,30 @@ class _FilterMenuSheetState extends State<FilterMenuSheet> {
     _Ingredient('Kacang-\nkacangan', '🥜'),
   ];
 
-  int _selectedAge = 0;
+  
+  late int _selectedAge;
   final Set<int> _selectedIngredients = {};
+
+  
+  String _normIng(String s) => s.replaceAll('\n', '').trim();
+
+  
+  @override
+  void initState() {
+    super.initState();
+
+    // Restore usia yang dipilih
+    final ageIdx = _ages.indexOf(widget.initialAge);
+    _selectedAge = ageIdx >= 0 ? ageIdx : 0;
+
+    // Restore bahan yang dipilih
+    final initialNorm = widget.initialIngredients.map(_normIng).toSet();
+    for (int i = 0; i < _ingredients.length; i++) {
+      if (initialNorm.contains(_normIng(_ingredients[i].name))) {
+        _selectedIngredients.add(i);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
