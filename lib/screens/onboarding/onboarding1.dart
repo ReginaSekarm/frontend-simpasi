@@ -6,6 +6,7 @@ import 'onboarding2.dart';
 import 'onboarding3.dart';
 import 'onboarding4.dart';
 import '../auth/register.dart';
+import '../auth/login.dart';
 
 const _kRed = Color(0xFFD45060);
 const _kMulaiBg = Color(0xFFB3EAE8);
@@ -24,7 +25,7 @@ const _total = 4;
 const _pageDuration = Duration(milliseconds: 400);
 const _pageCurve = Curves.fastOutSlowIn;
 
-// Dipakai hanya untuk keluar dari onboarding ke halaman Register
+// Dipakai hanya untuk keluar dari onboarding ke halaman Register / Login
 Route<T> _slide<T>(Widget page) => PageRouteBuilder<T>(
       transitionDuration: const Duration(milliseconds: 400),
       reverseTransitionDuration: const Duration(milliseconds: 400),
@@ -73,6 +74,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
     Navigator.of(context).pushReplacement(_slide(const RegisterScreen()));
   }
 
+  void _toLogin() {
+    Navigator.of(context).pushReplacement(_slide(const LoginScreen()));
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -82,7 +87,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     final isLast = _current == _total - 1;
     final showBack = _current > 0 && !isLast;
 
-    // Saat pindah ke Register, halaman ini keluar ke kiri
+    // Saat pindah ke Register/Login, halaman ini keluar ke kiri
     final secondary = ModalRoute.of(context)?.secondaryAnimation ??
         const AlwaysStoppedAnimation(0.0);
 
@@ -110,13 +115,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
             // ===== LAPISAN TETAP (tidak ikut bergeser) =====
 
-            // TOMBOL LEWATI (hilang di halaman terakhir)
+            // TOMBOL LEWATI (hilang di halaman terakhir) → direct ke LOGIN
             if (!isLast)
               Positioned(
                 top: 65 * sy,
                 right: 17.7 * s,
                 child: GestureDetector(
-                  onTap: _toRegister,
+                  onTap: _toLogin,
                   child: Container(
                     width: 83.23 * s,
                     height: 31.81 * s,
@@ -182,12 +187,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 ),
               ),
 
-            // TOMBOL NEXT (halaman terakhir jadi "Mulai")
+            // TOMBOL NEXT (halaman terakhir "Mulai" direct ke LOGIN)
             Positioned(
               right: 18.15 * s,
               bottom: 25.24 * sy,
               child: GestureDetector(
-                onTap: isLast ? _toRegister : () => _goTo(_current + 1),
+                // DIUBAH: isLast → _toLogin (sebelumnya _toRegister)
+                onTap: isLast ? _toLogin : () => _goTo(_current + 1),
                 child: isLast
                     ? Container(
                         width: 83.23 * s,

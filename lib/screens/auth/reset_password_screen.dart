@@ -1,4 +1,5 @@
 // lib/screens/auth/reset_password_screen.dart
+import 'dart:async'; // Tambahan untuk Timer
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -73,27 +74,35 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     super.dispose();
   }
 
+  // ================= POPUP GAGAL =================
+  void _showFailedPopup() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return const _AutoDismissFailedResetDialog();
+      },
+    );
+  }
+
   // ================= SIMPAN =================
   void _onSimpan() {
     // Set flag error untuk trigger tampilan merah
     setState(() {
-      _showPassError = !_isPasswordValid;
-      _showConfirmError = !_isConfirmValid;
+      _showPassError = _passC.text.isEmpty || !_isPasswordValid;
+      _showConfirmError = _confirmC.text.isEmpty || !_isConfirmValid;
     });
 
     // Kalau ada error → stop, jangan lanjut
     if (_showPassError || _showConfirmError) return;
 
+
     // TODO: panggil API update password
-    // Kalau API sukses → popup SUCCESS → balik ke Login
-    // Kalau API gagal → popup FAILED
-    //
-    // Contoh:
     // try {
     //   await api.updatePassword(_passC.text);
     //   _showSuccessPopup();
     // } catch (e) {
-    //   showStatusPopup(context, type: PopupType.resetPasswordFailed);
+    //   _showFailedPopup(); // Panggil popup gagal ini di dalam catch
     // }
 
     // Untuk demo (API belum siap) → langsung tampilkan SUCCESS popup:
@@ -238,10 +247,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           Padding(
                             padding: const EdgeInsets.only(left: 8),
                             child: Text(
-                              'Kata sandi belum memenuhi ketentuan',
+                              _passC.text.isEmpty 
+                                  ? 'Kata sandi wajib diisi'
+                                  : 'Kata sandi belum memenuhi ketentuan',
                               style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w400,
                                 color: errorRed,
                               ),
                             ),
@@ -307,10 +318,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           Padding(
                             padding: const EdgeInsets.only(top: 8, left: 8),
                             child: Text(
-                              'Konfirmasi Kata Sandi Tidak Cocok',
+                              _confirmC.text.isEmpty
+                                  ? 'Konfirmasi kata sandi wajib diisi'
+                                  : 'Konfirmasi Kata Sandi Tidak Cocok',
                               style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w400,
                                 color: errorRed,
                               ),
                             ),
@@ -361,4 +374,83 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(color: color, width: 1.2),
       );
+}
+
+// ================= WIDGET POPUP GAGAL (SESUAI FIGMA) =================
+class _AutoDismissFailedResetDialog extends StatefulWidget {
+  const _AutoDismissFailedResetDialog();
+
+  @override
+  State<_AutoDismissFailedResetDialog> createState() => _AutoDismissFailedResetDialogState();
+}
+
+class _AutoDismissFailedResetDialogState extends State<_AutoDismissFailedResetDialog> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Timer untuk menutup otomatis setelah 3 detik
+    _timer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // Batalkan timer jika popup sudah ditutup manual oleh user
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+      child: Container(
+        width: 330,
+        padding: const EdgeInsets.fromLTRB(24, 30, 24, 30),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF8F8F8F), width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cancel, // Ikon silang bulat
+              color: Color(0xFFD45060), // Warna primary red dari Figma
+              size: 70,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Gagal Memperbarui\nKata Sandi',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+                height: 24 / 20,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Terjadi kendala saat perbarui kata sandi.\nPeriksa koneksi Anda dan coba lagi.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF8F8F8F),
+                height: 17 / 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

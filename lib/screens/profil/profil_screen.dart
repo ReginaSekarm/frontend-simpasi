@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
-import '../../widgets/notification_icon.dart'; // 👈 TAMBAHKAN IMPORT INI
+import '../../widgets/notification_icon.dart';
+import '../home/home_ibu_screen.dart';
 import '../koleksi/koleksi_screen.dart';
 import '../menu/menu_screen.dart';
 import '../riwayat/riwayat_screen.dart';
 import 'edit_profil_screen.dart';
 import 'pengaturan_screen.dart';
 import '../notifikasi/notifikasi_screen.dart';
+import '../auth/login.dart'; // 👈 TAMBAH: import LoginScreen (sesuaikan path)
 
 // Mock GoogleFonts
 class GoogleFonts {
@@ -20,7 +22,7 @@ class GoogleFonts {
     TextDecoration? decoration,
   }) {
     return TextStyle(
-      fontFamily: 'Inter', 
+      fontFamily: 'Inter',
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -57,18 +59,26 @@ class _ProfilScreenState extends State<ProfilScreen> {
       body: SizedBox.expand(
         child: Stack(
           children: [
-            SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildTopSection(context),
-                  SizedBox(height: context.w(93)),
-                  _buildMenuCard(context),
-                  SizedBox(height: context.w(115)),
-                  _buildKeluarButton(context),
-                  SizedBox(height: context.w(100)), // Space untuk bottom nav
-                ],
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTopSection(context),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: context.w(93)),
+                        _buildMenuCard(context),
+                        SizedBox(height: context.w(115)),
+                        _buildKeluarButton(context),
+                        SizedBox(height: context.w(100)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
 
             // ================= BOTTOM NAV =================
@@ -84,7 +94,10 @@ class _ProfilScreenState extends State<ProfilScreen> {
                     MaterialPageRoute(builder: (_) => const MenuScreen()),
                   );
                 } else if (i == 2) {
-                  Navigator.of(context).popUntil((r) => r.isFirst);
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const HomeIbuScreen()),
+                    (r) => false,
+                  );
                 } else if (i == 3) {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const RiwayatScreen()),
@@ -107,7 +120,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // ---- Background merah melengkung ----
           Positioned(
             top: 0,
             left: 0,
@@ -124,7 +136,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
             ),
           ),
 
-          // ---- Title "Profil" + bell ----
           Positioned(
             top: topPad + context.w(20),
             left: context.w(28),
@@ -158,7 +169,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
             ),
           ),
 
-          // ---- Kartu putih (nama + badge) ----
           Positioned(
             top: topPad + context.w(109),
             left: context.w(23),
@@ -214,7 +224,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
             ),
           ),
 
-          // ---- Avatar "A" (overlap atas kartu putih) ----
           Positioned(
             top: topPad + context.w(58),
             left: 0,
@@ -257,7 +266,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
         ),
         child: Column(
           children: [
-            // ---- Edit Profil ----
             _buildMenuItem(
               context,
               icon: Icons.account_circle,
@@ -274,13 +282,11 @@ class _ProfilScreenState extends State<ProfilScreen> {
               },
             ),
 
-            // Divider
             Padding(
               padding: EdgeInsets.symmetric(horizontal: context.w(27)),
               child: Container(height: context.w(1.5), color: textGrey),
             ),
 
-            // ---- Pengaturan ----
             _buildMenuItem(
               context,
               icon: Icons.settings,
@@ -345,27 +351,25 @@ class _ProfilScreenState extends State<ProfilScreen> {
       padding: EdgeInsets.symmetric(horizontal: context.w(20)),
       child: GestureDetector(
         onTap: () {
-          // ================= POPUP KONFIRMASI KUSTOM SESUAI FIGMA =================
           showDialog(
             context: context,
-            barrierDismissible: true, 
+            barrierDismissible: true,
             builder: (_) => Dialog(
-              backgroundColor: Colors.transparent, 
+              backgroundColor: Colors.transparent,
               elevation: 0,
               child: Container(
-                width: context.w(259), 
+                width: context.w(259),
                 padding: EdgeInsets.symmetric(
-                  horizontal: context.w(32), 
-                  vertical: context.w(30)
+                  horizontal: context.w(32),
+                  vertical: context.w(30),
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(context.w(10)), 
+                  borderRadius: BorderRadius.circular(context.w(10)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Judul Popup
                     Text(
                       'Keluar',
                       style: GoogleFonts.inter(
@@ -375,8 +379,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
                       ),
                     ),
                     SizedBox(height: context.w(15)),
-                    
-                    // Deskripsi Popup
                     Text(
                       'Yakin ingin keluar dari akun?',
                       textAlign: TextAlign.center,
@@ -388,8 +390,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
                       ),
                     ),
                     SizedBox(height: context.w(25)),
-                    
-                    // Tombol Aksi (Batal & Keluar)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -401,8 +401,10 @@ class _ProfilScreenState extends State<ProfilScreen> {
                             height: context.w(29.6),
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFD9D9D9).withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(context.w(11.02)),
+                              color: const Color(0xFFD9D9D9)
+                                  .withValues(alpha: 0.5),
+                              borderRadius:
+                                  BorderRadius.circular(context.w(11.02)),
                             ),
                             child: Text(
                               'Batal',
@@ -414,20 +416,35 @@ class _ProfilScreenState extends State<ProfilScreen> {
                             ),
                           ),
                         ),
-                        
+
                         // Tombol Keluar
                         GestureDetector(
                           onTap: () {
+                            // 1) Tutup dialog konfirmasi
                             Navigator.pop(context);
-                            // TODO: Tambahkan logika navigasi ke halaman login di sini
+
+                            // 2) (Opsional) Bersihkan state akun di sini:
+                            //    - clear session / token
+                            //    - reset favorite store, dsb.
+                            //    Contoh: AuthService.logout();
+
+                            // 3) Arahkan ke Login dan hapus seluruh riwayat
+                            //    navigasi supaya user tidak bisa back ke Profil.
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const LoginScreen(),
+                              ),
+                              (route) => false,
+                            );
                           },
                           child: Container(
                             width: context.w(92.5),
                             height: context.w(29.6),
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFF0020), 
-                              borderRadius: BorderRadius.circular(context.w(11.02)),
+                              color: const Color(0xFFFF0020),
+                              borderRadius:
+                                  BorderRadius.circular(context.w(11.02)),
                             ),
                             child: Text(
                               'Keluar',

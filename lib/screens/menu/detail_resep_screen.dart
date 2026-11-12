@@ -5,6 +5,7 @@ import '../../widgets/bottom_nav.dart';
 import '../../widgets/recipe_store.dart';
 import '../../widgets/komentar_sheet.dart';   
 import '../koleksi/koleksi_screen.dart';
+import '../home/home_ibu_screen.dart';
 
 class GoogleFonts {
   static TextStyle inter({
@@ -126,7 +127,7 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
     super.initState();
     _data = RecipeDetailData.fromTitle(widget.title);
     
-    // 👇 3. TAMBAHKAN LOGIKA INI UNTUK OTOMATIS BUKA KOMENTAR
+    // LOGIKA INI UNTUK OTOMATIS BUKA KOMENTAR
     if (widget.openComments) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _openKomentarSheet();
@@ -216,7 +217,10 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
                     Navigator.of(context).pop();
                   }
                 } else if (i == 2) {
-                  Navigator.of(context).popUntil((r) => r.isFirst);
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const HomeIbuScreen()),
+                    (r) => false,
+                  );
                 }
               },
             ),

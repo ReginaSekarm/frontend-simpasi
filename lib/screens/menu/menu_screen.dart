@@ -8,7 +8,7 @@ import '../../widgets/child_store.dart';
 import '../../widgets/filter_menu_sheet.dart';
 import '../../widgets/initial_avatar.dart';
 import '../../widgets/menu_recommendation_card.dart';
-import '../../widgets/notification_icon.dart'; // 👈 TAMBAHKAN IMPORT INI
+import '../../widgets/notification_icon.dart'; 
 import '../koleksi/koleksi_screen.dart';
 import '../notifikasi/notifikasi_screen.dart';
 import '../profil/profil_screen.dart';
@@ -234,7 +234,7 @@ class _MenuScreenState extends State<MenuScreen> {
         badge: m.badge,
         hasBorder: border,
         isNew: m.isNew,
-        borderColor: textGrey, // border abu di halaman Menu
+        borderColor: textGrey,
       );
 
   // ================= BUILD =================
@@ -249,25 +249,39 @@ class _MenuScreenState extends State<MenuScreen> {
       body: SizedBox.expand(
         child: Stack(
           children: [
-            SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(context),
-                  if (widget.fromPemeriksaan) ...[
-                    SizedBox(height: context.w(18)),
-                    _buildPemeriksaanChips(context),
-                  ],
-                  SizedBox(height: context.w(showReco ? 18 : 22)),
-                  if (showReco) ...[
-                    _buildRecommendationBox(context),
-                    SizedBox(height: context.w(36)),
-                  ],
-                  _buildGrid(context),
-                  SizedBox(height: context.w(140)),
-                ],
-              ),
+            // Header Fixed, Pink Card & Grid ikut Scroll
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. HEADER MERAH (DIAM DI ATAS)
+                _buildHeader(context),
+
+                // 2. AREA SCROLL (PINK CARD & GRID)
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (widget.fromPemeriksaan) ...[
+                          SizedBox(height: context.w(18)),
+                          _buildPemeriksaanChips(context),
+                        ],
+                        SizedBox(height: context.w(showReco ? 18 : 22)),
+                        if (showReco) ...[
+                          _buildRecommendationBox(context),
+                          SizedBox(height: context.w(36)),
+                        ],
+                        _buildGrid(context),
+                        SizedBox(height: context.w(140)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
+            // 👆 ========================================================= 👆
+            
+            // ================= BOTTOM NAV =================
             BottomNav(
               currentIndex: 1,
               onTap: (i) {
@@ -424,7 +438,6 @@ class _MenuScreenState extends State<MenuScreen> {
                 width: context.w(12),
                 height: context.w(12),
                 decoration: BoxDecoration(
-                  // Titik merah penanda filter aktif
                   color: const Color(0xFFE60E0E),
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: context.w(2)),
@@ -594,7 +607,7 @@ class _MenuScreenState extends State<MenuScreen> {
         : 'Tidak ada resep yang cocok dengan filter.\nCoba ubah atau reset filter.';
 
     return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.55,
+      height: MediaQuery.of(context).size.height * 0.35, 
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -5,9 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart' as google_fonts;
 
 import '../../widgets/popup_status.dart';
-import '../home/home_ibu_screen.dart';
+import 'login.dart';
+
 import 'reset_password_screen.dart';
-import 'register.dart'; // 👈 WAJIB DIIMPORT UNTUK FALLBACK KEMBALI KE REGISTER
+import 'register.dart'; 
 
 class OtpVerificationScreen extends StatefulWidget {
   final String email;
@@ -76,47 +77,71 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     super.dispose();
   }
 
+  // ================= POPUP GAGAL KIRIM KODE =================
+  void _showFailedSendCodePopup() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return const _AutoDismissFailedSendCodeDialog();
+      },
+    );
+  }
+
   // ================= VERIFIKASI =================
   void _onVerify() {
     final code = _otpControllers.map((c) => c.text).join();
 
+    // Tetap pastikan harus diisi 4 digit
     if (code.length < 4) {
-      setState(() => _isError = true);
-      return;
-    }
-
-    if (code != '2230') {
       setState(() => _isError = true);
       return;
     }
 
     setState(() => _isError = false);
 
-    if (widget.isFromForgotPassword) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const ResetPasswordScreen(),
-        ),
-      );
-    } else {
-      showStatusPopup(
-        context,
-        type: PopupType.emailVerifySuccess,
-        onClose: () {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const HomeIbuScreen()),
-            (r) => false,
-          );
-        },
-      );
-    }
+    // Tampilkan Popup Sukses Kustom
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User menunggu popup hilang sendiri
+      builder: (ctx) {
+        return _SuccessVerificationDialog(
+          onDismiss: () {
+            if (widget.isFromForgotPassword) {
+              // Jika dari Lupa Sandi -> Ke Reset Password
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ResetPasswordScreen(),
+                ),
+              );
+            } else {
+              // Jika dari Register -> Ke Login
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()), 
+                (r) => false,
+              );
+            }
+          },
+        );
+      },
+    );
   }
 
   // ================= KIRIM ULANG KODE =================
   void _resendCode() {
     if (_secondsRemaining == 0) {
       _startTimer();
+
+      // TODO: Nanti saat API sudah siap, panggil API di sini dan gunakan try-catch seperti ini:
+      // try {
+      //   await api.resendOtp(widget.email); 
+      //   showStatusPopup(context, type: PopupType.otpResendSuccess);
+      // } catch (e) {
+      //   _showFailedSendCodePopup(); // Panggil popup gagal jika API error
+      // }
+
+      // Untuk saat ini (karena API belum terhubung), kita tampilkan popup sukses
       showStatusPopup(context, type: PopupType.otpResendSuccess);
     }
   }
@@ -415,6 +440,166 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ================= WIDGET POPUP SUKSES KUSTOM (AUTO-DIRECT) =================
+class _SuccessVerificationDialog extends StatefulWidget {
+  final VoidCallback onDismiss;
+
+  const _SuccessVerificationDialog({required this.onDismiss});
+
+  @override
+  State<_SuccessVerificationDialog> createState() => _SuccessVerificationDialogState();
+}
+
+class _SuccessVerificationDialogState extends State<_SuccessVerificationDialog> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Timer 2 detik untuk menutup otomatis lalu menjalankan onDismiss (Direct ke halaman berikutnya)
+    _timer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        Navigator.of(context).pop(); // Tutup popup
+        widget.onDismiss(); // Jalankan perpindahan halaman
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+      child: Container(
+        width: 335,
+        padding: const EdgeInsets.fromLTRB(24, 26, 24, 26),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.email_outlined, // Ikon surat (outline)
+              color: Color(0xFF76C457), // Warna hijau sesuai Figma
+              size: 70,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Verifikasi Email\nBerhasil',
+              textAlign: TextAlign.center,
+              style: google_fonts.GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+                height: 24 / 20,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Data email telah terkonfirmasi.',
+              textAlign: TextAlign.center,
+              style: google_fonts.GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF8F8F8F),
+                height: 17 / 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ================= WIDGET POPUP GAGAL KIRIM KODE (SESUAI FIGMA) =================
+class _AutoDismissFailedSendCodeDialog extends StatefulWidget {
+  const _AutoDismissFailedSendCodeDialog();
+
+  @override
+  State<_AutoDismissFailedSendCodeDialog> createState() => _AutoDismissFailedSendCodeDialogState();
+}
+
+class _AutoDismissFailedSendCodeDialogState extends State<_AutoDismissFailedSendCodeDialog> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Timer untuk menutup otomatis setelah 3 detik
+    _timer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // Batalkan timer jika popup sudah ditutup manual oleh user
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+      child: Container(
+        width: 330,
+        padding: const EdgeInsets.fromLTRB(24, 30, 24, 30),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF8F8F8F), width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cancel, // Ikon silang bulat
+              color: Color(0xFFD45060), // Warna primary red dari Figma
+              size: 70,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Gagal Mengirim Kode',
+              textAlign: TextAlign.center,
+              style: google_fonts.GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+                height: 24 / 20,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Terjadi kendala saat mengirim kode.\nPeriksa koneksi Anda dan coba lagi.',
+              textAlign: TextAlign.center,
+              style: google_fonts.GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF8F8F8F),
+                height: 17 / 14,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

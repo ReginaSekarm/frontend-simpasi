@@ -32,7 +32,6 @@ class PengaturanScreen extends StatefulWidget {
 class _PengaturanScreenState extends State<PengaturanScreen> {
   // Warna dari Figma
   static const Color textBlack   = Color(0xFF000000);
-  static const Color textGrey    = Color(0xFF8F8F8F);
   static const Color dividerGrey = Color(0xFF8F8F8F);
 
   @override

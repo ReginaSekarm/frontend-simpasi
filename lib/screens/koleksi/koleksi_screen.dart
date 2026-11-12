@@ -4,12 +4,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
 import '../../widgets/recipe_store.dart';
-import '../../widgets/notification_icon.dart'; // 👈 TAMBAHKAN IMPORT INI
+import '../../widgets/notification_icon.dart';
 import '../home/home_ibu_screen.dart';
 import '../menu/menu_screen.dart';
 import '../riwayat/riwayat_screen.dart';
 import '../profil/profil_screen.dart';
 import '../notifikasi/notifikasi_screen.dart';
+import '../menu/detail_resep_screen.dart' show DetailResepScreen;
 
 class GoogleFonts {
   static TextStyle inter({
@@ -123,13 +124,10 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                     MaterialPageRoute(builder: (_) => const MenuScreen()),
                   );
                 } else if (i == 2) {
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).popUntil((r) => r.isFirst);
-                  } else {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => const HomeIbuScreen()),
-                    );
-                  }
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const HomeIbuScreen()),
+                    (r) => false,
+                  );
                 } else if (i == 3) {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const RiwayatScreen()),
@@ -400,8 +398,21 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
   }
 
   // ================= KARTU RESEP =================
-  Widget _buildCard(BuildContext context, RecipeItem item) {
-    return Container(
+    Widget _buildCard(BuildContext context, RecipeItem item) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => DetailResepScreen(
+              title: item.title,
+              imagePath: item.imagePath,
+              badge: item.badge,
+            ),
+          ),
+        );
+      },
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: textGrey, width: context.w(1)),
@@ -503,6 +514,10 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                       width: context.w(12),
                       height: context.w(12),
                       fit: BoxFit.contain,
+                      colorFilter: const ColorFilter.mode(
+                        fireOrange,
+                        BlendMode.srcIn,
+                      ),
                     ),
                     SizedBox(width: context.w(2)),
                     Text(
@@ -519,8 +534,9 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
               ],
             ),
           ),
-        ],
+               ],
       ),
+    ),
     );
   }
 }

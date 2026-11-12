@@ -16,8 +16,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   static const Color primary = Color(0xFFD45060);
   static const Color accent = Color(0xFFF1A038);
   static const Color grey = Color(0xFF8F8F8F);
+  static const Color errorRed = Color(0xFFFF0000); // Tambahan warna merah
 
   final _emailC = TextEditingController();
+
+  // State untuk menandakan apakah error harus ditampilkan
+  bool _showEmailError = false; 
 
   @override
   void dispose() {
@@ -32,10 +36,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         color: Colors.black,
       );
 
-  InputDecoration _decoration(String hint) {
+  // Diubah agar bisa menerima status error (border merah)
+  InputDecoration _decoration(String hint, {bool isError = false}) {
+    final borderColor = isError ? errorRed : grey;
+    final focusedColor = isError ? errorRed : primary;
+
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: grey, width: 1),
+      borderSide: BorderSide(color: borderColor, width: 1),
     );
     return InputDecoration(
       hintText: hint,
@@ -47,17 +55,25 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       border: border,
       enabledBorder: border,
       focusedBorder: border.copyWith(
-        borderSide: const BorderSide(color: primary, width: 1.2),
+        borderSide: BorderSide(color: focusedColor, width: 1.2),
       ),
     );
   }
 
   // ---------- Aksi ----------
   void _onSendCode() {
+    // Jika kosong, tampilkan error merah dan hentikan proses
     if (_emailC.text.trim().isEmpty) {
-      _snack('Email wajib diisi');
+      setState(() {
+        _showEmailError = true;
+      });
       return;
     }
+
+    // Sembunyikan error jika sudah diisi
+    setState(() {
+      _showEmailError = false;
+    });
 
     // Pindah ke verifikasi OTP (alur Lupa Kata Sandi)
     Navigator.push(
@@ -73,10 +89,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   void _onBackToLogin() {
     Navigator.of(context).pop();
-  }
-
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   // ---------- UI ----------
@@ -138,7 +150,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   SizedBox(
                     width: 250,
                     child: Text(
-                      'Masukkan email akun Anda\nkami kirimkan kode verifikasi.',
+                      'Silakan isi alamat email Anda\nkami akan mengirimkan kode verifikasi.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 14,
@@ -177,9 +189,35 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             controller: _emailC,
                             keyboardType: TextInputType.emailAddress,
                             style: GoogleFonts.inter(fontSize: 14),
-                            decoration: _decoration('nama@gmail.com'),
+                            // Sembunyikan error saat user mulai mengetik
+                            onChanged: (value) {
+                              if (_showEmailError && value.trim().isNotEmpty) {
+                                setState(() {
+                                  _showEmailError = false;
+                                });
+                              }
+                            },
+                            decoration: _decoration(
+                              'nama@gmail.com',
+                              isError: _showEmailError,
+                            ),
                           ),
                         ),
+
+                        // Teks Peringatan Merah (Muncul jika error)
+                        if (_showEmailError)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8, left: 8),
+                            child: Text(
+                              'Silakan isi alamat email Anda',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w400,
+                                color: errorRed,
+                              ),
+                            ),
+                          ),
+
                         const SizedBox(height: 32),
 
                         // Tombol Kirim Kode Verifikasi

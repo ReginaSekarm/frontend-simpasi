@@ -8,7 +8,6 @@ const _desc =
     'Terhubung dengan sesama orang tua dan kader Posyandu se-Indonesia '
     'untuk berbagi cerita, bertanya, dan saling mendukung mencegah stunting.';
 
-// Isi halaman 4 saja. Tombol "Mulai", titik, dan panah ada di onboarding1.dart
 class Onboarding4Page extends StatelessWidget {
   const Onboarding4Page({super.key});
 

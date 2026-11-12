@@ -218,7 +218,7 @@ class _DetailPencarianScreenState extends State<DetailPencarianScreen> {
 
           // Pil: Riwayat + Obrolan baru
           Positioned(
-            right: 16,
+            right: 26,
             bottom: 32,
             child: Container(
               width: 73,

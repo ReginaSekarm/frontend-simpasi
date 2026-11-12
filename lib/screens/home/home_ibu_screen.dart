@@ -12,7 +12,7 @@ import '../../widgets/data_menu_dropdown.dart';
 import '../../widgets/hapus_data_dialog.dart';
 import '../../widgets/initial_avatar.dart';
 import '../../widgets/menu_recommendation_card.dart';
-import '../../widgets/notification_icon.dart'; // 👈 TAMBAHKAN IMPORT INI
+import '../../widgets/notification_icon.dart';
 import '../../widgets/tambah_data_anak_sheet.dart';
 import '../ai/tanya_ai_screen.dart';
 import '../koleksi/koleksi_screen.dart';
@@ -86,6 +86,42 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     }
   }
 
+  String _hitungUmur(String tglLahir) {
+    try {
+      final parts = tglLahir.split('/');
+      if (parts.length != 3) return '-';
+
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+
+      final birthDate = DateTime(year, month, day);
+      if (birthDate.day != day ||
+          birthDate.month != month ||
+          birthDate.year != year) {
+        return '-';
+      }
+
+      final now = DateTime.now();
+      if (birthDate.isAfter(now)) return '-';
+
+      int months =
+          (now.year - birthDate.year) * 12 + now.month - birthDate.month;
+      if (now.day < birthDate.day) months--;
+      if (months < 0) months = 0;
+
+      if (months < 12) return '$months Bulan';
+
+      final years = months ~/ 12;
+      final remainingMonths = months % 12;
+      return remainingMonths == 0
+          ? '$years Tahun'
+          : '$years Tahun $remainingMonths Bulan';
+    } catch (e) {
+      return '-';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -122,10 +158,12 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
 
     if (result != null) {
       setState(() {
+        final newTglLahir = result['tanggalLahir'] ?? '-';
+
         _children.add(ChildData(
           nama: result['nama'] ?? 'Anak Baru',
           gender: result['gender'] ?? 'L',
-          umur: result['umur'] ?? '0 Bulan',
+          umur: _hitungUmur(newTglLahir),
           status: result['status'] ?? 'Normal',
           berat: result['berat'] ?? '-',
           tinggi: result['tinggi'] ?? '-',
@@ -133,7 +171,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
           lila: result['lila'] ?? '-',
           alergi: result['alergi'] ?? '',
           tempat: result['tempat'] ?? '-',
-          tanggalLahir: result['tanggalLahir'] ?? '-',
+          tanggalLahir: newTglLahir,
         ));
         _currentChildIndex = _children.length - 1;
       });
@@ -166,10 +204,12 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
 
     if (result != null) {
       setState(() {
+        final newTglLahir = result['tanggalLahir'] ?? _currentChild.tanggalLahir;
+
         _children[_currentChildIndex] = ChildData(
           nama: result['nama'] ?? _currentChild.nama,
           gender: result['gender'] ?? _currentChild.gender,
-          umur: _currentChild.umur,
+          umur: _hitungUmur(newTglLahir),
           status: result['status'] ?? _currentChild.status,
           berat: result['berat'] ?? _currentChild.berat,
           tinggi: result['tinggi'] ?? _currentChild.tinggi,
@@ -177,7 +217,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
           lila: result['lila'] ?? _currentChild.lila,
           alergi: _currentChild.alergi,
           tempat: result['tempat'] ?? _currentChild.tempat,
-          tanggalLahir: result['tanggalLahir'] ?? _currentChild.tanggalLahir,
+          tanggalLahir: newTglLahir,
         );
       });
       _syncCurrentChild();
@@ -261,7 +301,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
         builder: (_) => TanyaAiScreen(
           child: AiChildInfo(
             nama: _currentChild.nama,
-            umur: _currentChild.umur,
+            umur: _hitungUmur(_currentChild.tanggalLahir),
             gender: _currentChild.gender,
             alergi: _currentChild.alergi,
           ),
@@ -286,14 +326,15 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
         child: Stack(
           children: [
             SingleChildScrollView(
+             physics: const NeverScrollableScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHeaderSection(context),
                   _buildMenuSection(),
-                  SizedBox(height: context.w(34)),
+                  SizedBox(height: context.w(20)),
                   _buildStuntingBanner(),
-                  SizedBox(height: context.w(140) + bottomPad),
+                  SizedBox(height: context.w(90) + bottomPad),
                 ],
               ),
             ),
@@ -453,7 +494,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
               },
             ),
           ),
-          // 👆 SAMPAI SINI
 
           Positioned(
             top: topPad + context.w(116),
@@ -510,7 +550,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SvgPicture.asset(
-                'assets/images/icon-plus.svg',
+                'assets/images/plus.svg',
                 width: context.w(60),
                 height: context.w(60),
                 fit: BoxFit.contain,
@@ -543,7 +583,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
         Padding(
           padding: EdgeInsets.only(left: context.w(69)),
           child: SizedBox(
-            height: context.w(26), 
+            height: context.w(26),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -640,7 +680,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
               SizedBox(width: context.w(4)),
               Flexible(
                 child: Text(
-                  _currentChild.umur,
+                  _hitungUmur(_currentChild.tanggalLahir),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: google_fonts.GoogleFonts.inter(
@@ -749,7 +789,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(height: context.w(44)),
+        SizedBox(height: context.w(20)),
         Padding(
           padding: EdgeInsets.only(
             left: context.w(30),
@@ -833,7 +873,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     return Container(
       width: double.infinity,
       margin: EdgeInsets.symmetric(horizontal: context.w(37)),
-      constraints: BoxConstraints(minHeight: context.w(190)),
+      constraints: BoxConstraints(minHeight: context.w(160)),
       decoration: BoxDecoration(
         color: bgTeal,
         borderRadius: BorderRadius.circular(context.w(30)),

@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'otp_verification_screen.dart';
-import 'login.dart';
+import 'login.dart'; // Pastikan import ini sesuai dengan nama file Anda
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -317,25 +318,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  // ---------- Popup Kustom Error (Sesuai Figma) ----------
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: true, // Bisa diklik di luar untuk menutup
+      builder: (ctx) {
+        return _AutoDismissErrorDialog(
+          title: title,
+          message: message,
+        );
+      },
+    );
+  }
+
   // ---------- Aksi Tombol ----------
   void _onRegister() {
-    if (_namaC.text.isEmpty ||
-        _emailC.text.isEmpty ||
-        _hpC.text.isEmpty ||
-        _passC.text.isEmpty) {
-      _snack('Semua kolom wajib diisi');
+    // 1. Cek kolom kosong
+    if (_namaC.text.trim().isEmpty ||
+        _emailC.text.trim().isEmpty ||
+        _hpC.text.trim().isEmpty ||
+        _passC.text.isEmpty ||
+        _confirmC.text.isEmpty) {
+      _showErrorDialog(
+        'Semua Kolom Wajib Diisi',
+        'Silakan lengkapi nama, email, no. HP, dan kata sandi Anda terlebih dahulu sebelum mendaftar.',
+      );
       return;
     }
+
+    // 2. Cek format email
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_emailC.text.trim())) {
+      _showErrorDialog(
+        'Format Email Salah',
+        'Silakan periksa kembali ejaan email Anda. Pastikan menggunakan format yang benar (contoh: nama@gmail.com).',
+      );
+      return;
+    }
+
+    // 3. Cek kriteria kata sandi
     if (!_hasMinLength || !_hasUppercase || !_hasDigit) {
-      _snack('Kata sandi belum memenuhi semua kriteria');
+      _showErrorDialog(
+        'Kata Sandi Belum Memenuhi Ketentuan',
+        'Kata sandi minimal 8 karakter, harus mengandung 1 huruf besar dan 1 angka.',
+      );
       return;
     }
+
+    // 4. Cek konfirmasi kata sandi
     if (_passC.text != _confirmC.text) {
-      _snack('Konfirmasi kata sandi tidak sama');
+      _showErrorDialog(
+        'Konfirmasi Kata Sandi Salah',
+        'Kata sandi dan konfirmasi kata sandi tidak sama. Silakan periksa kembali.',
+      );
       return;
     }
+
+    // 5. Cek persetujuan S&K
     if (!_agree) {
-      _snack('Anda harus menyetujui Syarat & Ketentuan');
+      _showErrorDialog(
+        'Persetujuan Dibutuhkan',
+        'Anda harus menyetujui Syarat & Ketentuan serta Kebijakan Privasi terlebih dahulu.',
+      );
       return;
     }
 
@@ -346,10 +390,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         builder: (context) => OtpVerificationScreen(email: _emailC.text),
       ),
     );
-  }
-
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   // ---------- UI ----------
@@ -379,253 +419,354 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // Konten Form
           SafeArea(
             top: false,
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 60),
+            // Menggunakan LayoutBuilder & IntrinsicHeight agar fit ke layar
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Column(
+                        children: [
+                          // Jarak atas sedikit dikurangi agar muat
+                          const SizedBox(height: 40),
 
-                  // Maskot
-                  Image.asset(
-                    'assets/images/start-melet-buka.png',
-                    height: 76,
-                    errorBuilder: (_, _, _) => const Icon(
-                      Icons.child_care,
-                      size: 76,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  Text(
-                    'Buat Akun',
-                    style: GoogleFonts.inter(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'Daftar sekarang untuk mulai perjalanan Anda',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 25),
-
-                  // Card form
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 30),
-                    padding: const EdgeInsets.fromLTRB(21, 20, 21, 24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: grey, width: 1),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _field(
-                          label: 'Nama Lengkap',
-                          hint: 'nama lengkap',
-                          controller: _namaC,
-                        ),
-                        const SizedBox(height: 20),
-                        _field(
-                          label: 'Alamat Email',
-                          hint: 'nama@gmail.com',
-                          controller: _emailC,
-                          type: TextInputType.emailAddress,
-                        ),
-                        const SizedBox(height: 20),
-                        _field(
-                          label: 'No.HP',
-                          hint: '08xxxxxxxxxx',
-                          controller: _hpC,
-                          type: TextInputType.phone,
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Kata sandi + Konfirmasi (2 kolom)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _passwordField(
-                                label: 'Kata Sandi',
-                                controller: _passC,
-                                obscure: _hidePass,
-                                onToggle: () =>
-                                    setState(() => _hidePass = !_hidePass),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: _passwordField(
-                                label: 'Konfirmasi',
-                                controller: _confirmC,
-                                obscure: _hideConfirm,
-                                onToggle: () => setState(
-                                    () => _hideConfirm = !_hideConfirm),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Keterangan syarat kata sandi (teks biasa)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 4),
-                          child: Text(
-                            '*Kata sandi min 8 karakter, 1 huruf besar dan 1 angka',
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontStyle: FontStyle.italic,
-                              color: (_hasMinLength && _hasUppercase && _hasDigit)
-                                  ? successGreen
-                                  : grey,
+                          // Maskot
+                          Image.asset(
+                            'assets/images/start-melet-buka.png',
+                            height: 76,
+                            errorBuilder: (_, _, _) => const Icon(
+                              Icons.child_care,
+                              size: 76,
+                              color: Colors.white,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
+                          const SizedBox(height: 14),
 
-                        // Checkbox syarat & ketentuan
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 17,
-                              height: 17,
-                              child: Checkbox(
-                                value: _agree,
-                                onChanged: (v) =>
-                                    setState(() => _agree = v ?? false),
-                                activeColor: primary,
-                                checkColor: Colors.white,
-                                fillColor: WidgetStateProperty.resolveWith(
-                                  (states) =>
-                                      states.contains(WidgetState.selected)
-                                          ? primary
-                                          : const Color(0xFFF7F8F0),
-                                ),
-                                side: const BorderSide(
-                                  color: Color(0xFF797777),
-                                  width: 1.7,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                materialTapTargetSize:
-                                    MaterialTapTargetSize.shrinkWrap,
-                              ),
+                          Text(
+                            'Buat Akun',
+                            style: GoogleFonts.inter(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text.rich(
-                                TextSpan(
-                                  style: GoogleFonts.inter(
-                                    fontSize: 10,
-                                    color: Colors.black,
-                                  ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Daftar sekarang untuk mulai perjalanan Anda',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          // Jarak sebelum card dikurangi
+                          const SizedBox(height: 15),
+
+                          // Card form
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 30),
+                            padding: const EdgeInsets.fromLTRB(21, 20, 21, 24),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: grey, width: 1),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _field(
+                                  label: 'Nama Lengkap',
+                                  hint: 'nama lengkap',
+                                  controller: _namaC,
+                                ),
+                                const SizedBox(height: 20),
+                                _field(
+                                  label: 'Alamat Email',
+                                  hint: 'nama@gmail.com',
+                                  controller: _emailC,
+                                  type: TextInputType.emailAddress,
+                                ),
+                                const SizedBox(height: 20),
+                                _field(
+                                  label: 'No.HP',
+                                  hint: '08xxxxxxxxxx',
+                                  controller: _hpC,
+                                  type: TextInputType.phone,
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Kata sandi + Konfirmasi (2 kolom)
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const TextSpan(text: 'Saya menyetujui '),
-                                    TextSpan(
-                                      text: 'Syarat & Ketentuan',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: primary,
+                                    Expanded(
+                                      child: _passwordField(
+                                        label: 'Kata Sandi',
+                                        controller: _passC,
+                                        obscure: _hidePass,
+                                        onToggle: () =>
+                                            setState(() => _hidePass = !_hidePass),
                                       ),
-                                      recognizer: TapGestureRecognizer()
-                                        ..onTap = () =>
-                                            _showTermsAndPrivacyModal(context),
                                     ),
-                                    const TextSpan(text: ' serta '),
-                                    TextSpan(
-                                      text: 'Kebijakan Privasi',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: primary,
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: _passwordField(
+                                        label: 'Konfirmasi',
+                                        controller: _confirmC,
+                                        obscure: _hideConfirm,
+                                        onToggle: () => setState(
+                                            () => _hideConfirm = !_hideConfirm),
                                       ),
-                                      recognizer: TapGestureRecognizer()
-                                        ..onTap = () =>
-                                            _showTermsAndPrivacyModal(context),
                                     ),
                                   ],
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 22),
+                                const SizedBox(height: 8),
 
-                        // Tombol Daftar
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                            onPressed: _onRegister,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: accent,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            child: Text(
-                              'Daftar Sekarang',
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
+                                // Keterangan syarat kata sandi
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 4),
+                                  child: Text(
+                                    '*Kata sandi min 8 karakter, 1 huruf besar dan 1 angka',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      fontStyle: FontStyle.italic,
+                                      color: (_hasMinLength && _hasUppercase && _hasDigit)
+                                          ? successGreen
+                                          : grey,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Checkbox syarat & ketentuan
+                                Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 17,
+                                      height: 17,
+                                      child: Checkbox(
+                                        value: _agree,
+                                        onChanged: (v) =>
+                                            setState(() => _agree = v ?? false),
+                                        activeColor: primary,
+                                        checkColor: Colors.white,
+                                        fillColor: WidgetStateProperty.resolveWith(
+                                          (states) =>
+                                              states.contains(WidgetState.selected)
+                                                  ? primary
+                                                  : const Color(0xFFF7F8F0),
+                                        ),
+                                        side: const BorderSide(
+                                          color: Color(0xFF797777),
+                                          width: 1.7,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(5),
+                                        ),
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text.rich(
+                                        TextSpan(
+                                          style: GoogleFonts.inter(
+                                            fontSize: 10,
+                                            color: Colors.black,
+                                          ),
+                                          children: [
+                                            const TextSpan(text: 'Saya menyetujui '),
+                                            TextSpan(
+                                              text: 'Syarat & Ketentuan',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
+                                                color: primary,
+                                              ),
+                                              recognizer: TapGestureRecognizer()
+                                                ..onTap = () =>
+                                                    _showTermsAndPrivacyModal(context),
+                                            ),
+                                            const TextSpan(text: ' serta '),
+                                            TextSpan(
+                                              text: 'Kebijakan Privasi',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
+                                                color: primary,
+                                              ),
+                                              recognizer: TapGestureRecognizer()
+                                                ..onTap = () =>
+                                                    _showTermsAndPrivacyModal(context),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 22),
+
+                                // Tombol Daftar
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 48,
+                                  child: ElevatedButton(
+                                    onPressed: _onRegister,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: accent,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Daftar Sekarang',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
+
+                          // Spacer untuk mengisi sisa layar
+                          const Spacer(),
+
+                          const SizedBox(height: 20), // Jarak atas footer
+
+                          // Footer
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Sudah punya akun? ',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const LoginScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  'Masuk di sini',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24), // Jarak bawah
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 28),
-
-                  // Footer
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Sudah punya akun? ',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: Colors.black,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const LoginScreen(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          'Masuk di sini',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ================= WIDGET POPUP AUTO-DISMISS =================
+class _AutoDismissErrorDialog extends StatefulWidget {
+  final String title;
+  final String message;
+
+  const _AutoDismissErrorDialog({
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  State<_AutoDismissErrorDialog> createState() => _AutoDismissErrorDialogState();
+}
+
+class _AutoDismissErrorDialogState extends State<_AutoDismissErrorDialog> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Timer untuk menutup otomatis setelah 3 detik
+    _timer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // Batalkan timer jika popup sudah ditutup manual oleh user
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+      child: Container(
+        width: 335,
+        padding: const EdgeInsets.fromLTRB(28, 26, 28, 22),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Color(0xFFFF0000),
+              size: 60,
+            ),
+            const SizedBox(height: 17),
+            Text(
+              widget.title,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+                height: 24 / 20,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              widget.message,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF8F8F8F),
+                height: 17 / 14,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

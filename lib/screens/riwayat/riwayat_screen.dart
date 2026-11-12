@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-
-// Pastikan import ini sesuai dengan struktur folder Anda
 import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
 import '../../widgets/notification_icon.dart';
-import '../home/home_ibu_screen.dart';
+import '../home/home_ibu_screen.dart'; // 👈 TAMBAHKAN IMPORT INI
 import '../koleksi/koleksi_screen.dart';
 import '../menu/menu_screen.dart';
 import '../notifikasi/notifikasi_screen.dart';
 import '../profil/profil_screen.dart';
 import 'detail_pemeriksaan_screen.dart';
-import 'detail_pencarian_screen.dart'; // 👈 WAJIB IMPORT INI
+import 'detail_pencarian_screen.dart'; 
+import '../ai/tanya_ai_screen.dart';
 
 class GoogleFonts {
   static TextStyle inter({
@@ -105,12 +103,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   static const Color orangeFaded  = Color(0xB3E38621);
   static const Color dividerOrange= Color(0xFFBE6D15);
   static const Color textBlack    = Color(0xFF000000);
-  static const Color textGrey     = Color(0xFF8F8F8F);
   static const Color textDarkDate = Color(0xFF4B5563);
   static const Color statusRed    = Color(0xFFD45060);
   static const Color statusOrange = Color(0xFFF1A038);
   static const Color statusGreen  = Color(0xFF76C457);
-  static const Color purpleAI     = Color(0xFF9564DD);
   static const Color iconCircleBg = Color(0xA3FFFFFF);
 
   late int _tab;
@@ -195,30 +191,33 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       body: SizedBox.expand(
         child: Stack(
           children: [
-            SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(context),
-
-                  SizedBox(height: context.w(32)),
-
-                  // ================= ISI TAB =================
-                  if (_tab == 1) ...[
-                    for (int i = 0; i < _riwayat.length; i++) ...[
-                      if (i > 0) SizedBox(height: context.w(27)),
-                      _buildRiwayatCard(context, _riwayat[i]),
-                    ],
-                  ] else ...[
-                    for (int i = 0; i < _pencarian.length; i++) ...[
-                      if (i > 0) SizedBox(height: context.w(28)),
-                      _buildPencarianGroup(context, _pencarian[i]),
-                    ],
-                  ],
-
-                  SizedBox(height: context.w(140)),
-                ],
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(context),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: context.w(32)),
+                        if (_tab == 1) ...[
+                          for (int i = 0; i < _riwayat.length; i++) ...[
+                            if (i > 0) SizedBox(height: context.w(27)),
+                            _buildRiwayatCard(context, _riwayat[i]),
+                          ],
+                        ] else ...[
+                          for (int i = 0; i < _pencarian.length; i++) ...[
+                            if (i > 0) SizedBox(height: context.w(28)),
+                            _buildPencarianGroup(context, _pencarian[i]),
+                          ],
+                        ],
+                        SizedBox(height: context.w(140)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
 
             // ================= BOTTOM NAV =================
@@ -234,7 +233,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     MaterialPageRoute(builder: (_) => const MenuScreen()),
                   );
                 } else if (i == 2) {
-                  Navigator.of(context).popUntil((r) => r.isFirst);
+                  // PERBAIKAN: Arahkan ke HomeIbuScreen & bersihkan stack
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const HomeIbuScreen()),
+                    (r) => false,
+                  );
                 } else if (i == 4) {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const ProfilScreen()),
@@ -263,7 +266,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       ),
       child: Stack(
         children: [
-          // Baris 1: "Riwayat" + bell
           Positioned(
             top: topPad + context.w(30),
             left: context.w(28),
@@ -296,8 +298,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               ),
             ),
           ),
-
-          // Baris 2: Tab toggle
           Positioned(
             top: topPad + context.w(110),
             left: context.w(38),
@@ -385,7 +385,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ==== Header: "Sabtu 12 Sep 2026" ====
             Padding(
               padding: EdgeInsets.only(
                 left: context.w(7),
@@ -414,11 +413,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 ),
               ),
             ),
-
-            // Divider header
             Container(height: context.w(1), color: dividerOrange),
-
-            // ==== List pencarian item ====
             for (int i = 0; i < group.items.length; i++) ...[
               _buildPencarianItem(context, group.items[i]),
               if (i < group.items.length - 1)
@@ -439,7 +434,15 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => DetailPencarianScreen(keywords: item.keywords),
+            builder: (_) => TanyaAiScreen(
+              child: const AiChildInfo(
+                nama: 'Alaia',
+                umur: '18 Bulan',
+                gender: 'P',
+                alergi: 'Telur',
+              ),
+              initialBahan: item.keywords.join(', '), // Masukkan keywords ke AI
+            ),
           ),
         );
       },
@@ -449,7 +452,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // AI icon circle
             Container(
               width: context.w(30),
               height: context.w(30),
@@ -467,13 +469,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               ),
             ),
             SizedBox(width: context.w(13)),
-
-            // Kolom chips + "N resep ditemukan"
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Chips
                   Wrap(
                     spacing: context.w(6),
                     runSpacing: context.w(6),
@@ -516,8 +515,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 ],
               ),
             ),
-
-            // Chevron
             Icon(
               Icons.chevron_right,
               size: context.w(26),
@@ -567,7 +564,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Kotak tanggal
               Container(
                 constraints: BoxConstraints(minHeight: context.w(63)),
                 width: context.w(59),
@@ -602,7 +598,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 ),
               ),
               SizedBox(width: context.w(15)),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

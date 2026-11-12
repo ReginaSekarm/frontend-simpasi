@@ -5,8 +5,6 @@ import 'package:simpasi/screens/splash/splash.dart';
 import 'widgets/responsive_wrapper.dart';
 import 'core/app_theme.dart' as app_theme;
 import 'core/app_scroll_behavior.dart';
-
-// 1. IMPORT FILE NOTIFIKASI SCREEN 
 import 'package:simpasi/screens/notifikasi/notifikasi_screen.dart'; 
 
 Future<void> main() async {
@@ -34,7 +32,7 @@ class MyApp extends StatelessWidget {
       builder: (context, child) => ResponsiveWrapper(
         child: RepaintBoundary(child: child!),
       ),
-      home: SplashScreen(),
+      home: const SplashScreen(),
     );
   }
 }

@@ -165,6 +165,7 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
       'kepala': _kepalaC.text.isEmpty ? '-' : _kepalaC.text,
       'lila':   _lilaC.text.isEmpty ? '-' : _lilaC.text,
       'status': _kondisi.isEmpty ? 'Normal' : _kondisi,
+      'tanggalLahir': _tglC.text,
     });
   }
 
@@ -539,8 +540,16 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
               ),
             ),
           ),
+          // 👇 PERBAIKAN: Membungkus Icon dengan GestureDetector agar bisa diklik 👇
           if (suffixIcon != null)
-            Icon(suffixIcon, size: 20, color: textBlack50),
+            GestureDetector(
+              onTap: onTap, // Memicu fungsi showDatePicker yang sama
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8.0), // Area klik diperluas
+                child: Icon(suffixIcon, size: 20, color: textBlack50),
+              ),
+            ),
         ],
       ),
     );
@@ -644,7 +653,7 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
           dotColor = const Color(0xFFE38621);
           break;
         default: // Stunting
-          bgColor = const Color(0x80FCEBD5);
+          bgColor = const Color(0xFFFCEBD5);
           textColor = const Color(0xFFDD2E44);
           dotColor = const Color(0xFFDD2E44);
           break;

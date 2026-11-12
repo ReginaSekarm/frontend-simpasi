@@ -1,8 +1,8 @@
 // lib/screens/auth/login.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart' as gfonts;
 
-import '../../widgets/popup_status.dart';
 import '../home/home_ibu_screen.dart';
 import 'forgot_pass_screen.dart';
 import 'register.dart';
@@ -98,6 +98,21 @@ class _LoginScreenState extends State<LoginScreen> {
   }
   // ============================================================
 
+  // ================= POPUP KUSTOM LOGIN GAGAL (Figma) =================
+  void _showLoginErrorDialog({required String title, required String message}) {
+    showDialog(
+      context: context,
+      barrierDismissible: true, // Bisa diketuk di luar untuk menutup
+      builder: (ctx) {
+        return _AutoDismissLoginErrorDialog(
+          title: title,
+          message: message,
+        );
+      },
+    );
+  }
+  // ====================================================================
+
   TextStyle _label() => gfonts.GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w600,
@@ -132,24 +147,22 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _onLogin() {
+    // 1. Cek jika kolom kosong
     if (_emailC.text.isEmpty || _passC.text.isEmpty) {
-      _snack('Email dan kata sandi wajib diisi');
+      _showLoginErrorDialog(
+        title: 'Email dan Kata Sandi Kosong',
+        message: 'Silakan isi alamat email dan kata sandi Anda terlebih dahulu sebelum masuk.',
+      );
       return;
     }
 
-    const validEmail = 'user@gmail.com';
-    const validPass  = 'password123';
-
-    if (_emailC.text.trim() == validEmail && _passC.text == validPass) {
-      // showLoginSuccess: true -> halaman utama menampilkan snackbar "Login Berhasil"
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const HomeIbuScreen(showLoginSuccess: true),
-        ),
-      );
-    } else {
-      showStatusPopup(context, type: PopupType.loginFailed);
-    }
+    // 2. Langsung arahkan ke Home jika kolom terisi
+    // (Di sini nanti Anda bisa tambahkan pemanggilan API / logika autentikasi backend)
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => const HomeIbuScreen(showLoginSuccess: true),
+      ),
+    );
   }
 
   void _onForgotPassword() {
@@ -168,6 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // _snack tidak dipakai lagi di _onLogin, tapi dibiarkan jika masih butuh di tempat lain
   void _snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
@@ -408,6 +422,90 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ================= WIDGET POPUP LOGIN GAGAL AUTO-DISMISS =================
+class _AutoDismissLoginErrorDialog extends StatefulWidget {
+  final String title;
+  final String message;
+
+  const _AutoDismissLoginErrorDialog({
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  State<_AutoDismissLoginErrorDialog> createState() => _AutoDismissLoginErrorDialogState();
+}
+
+class _AutoDismissLoginErrorDialogState extends State<_AutoDismissLoginErrorDialog> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Timer untuk menutup otomatis setelah 3 detik
+    _timer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // Batalkan timer jika popup sudah ditutup manual oleh user
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+      child: Container(
+        width: 335,
+        padding: const EdgeInsets.fromLTRB(28, 26, 28, 22),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Color(0xFFFF0000), // Merah terang dari desain
+              size: 60,
+            ),
+            const SizedBox(height: 17),
+            Text(
+              widget.title,
+              textAlign: TextAlign.center,
+              style: gfonts.GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+                height: 24 / 20,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              widget.message,
+              textAlign: TextAlign.center,
+              style: gfonts.GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF8F8F8F),
+                height: 17 / 14,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
