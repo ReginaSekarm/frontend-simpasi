@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:simpasi/screens/auth/register.dart';
+import 'package:simpasi/screens/splash/splash.dart';
 
 import 'widgets/responsive_wrapper.dart';
 import 'core/app_theme.dart' as app_theme;
@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
       builder: (context, child) => ResponsiveWrapper(
         child: RepaintBoundary(child: child!),
       ),
-      home: const RegisterScreen(),
+      home: const SplashScreen(),
     );
   }
 }
