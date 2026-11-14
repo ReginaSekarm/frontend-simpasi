@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
 import '../../widgets/notification_icon.dart';
-import '../home/home_ibu_screen.dart'; // 👈 TAMBAHKAN IMPORT INI
+import '../home/home_ibu_screen.dart'; 
 import '../koleksi/koleksi_screen.dart';
 import '../menu/menu_screen.dart';
 import '../notifikasi/notifikasi_screen.dart';
 import '../profil/profil_screen.dart';
 import 'detail_pemeriksaan_screen.dart';
-import 'detail_pencarian_screen.dart'; 
 import '../ai/tanya_ai_screen.dart';
 
 class GoogleFonts {

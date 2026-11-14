@@ -30,6 +30,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _hideConfirm = true;
   bool _agree = false;
 
+  // STATE UNTUK ERROR NO HP & EMAIL
+  String? _hpError;
+  String? _emailError;
+
   // Status validasi real-time kata sandi
   bool _hasMinLength = false;
   bool _hasUppercase = false;
@@ -68,10 +72,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         color: Colors.black,
       );
 
-  InputDecoration _decoration(String hint, {Widget? suffix}) {
+  // DECORATION DIPERBARUI UNTUK MENERIMA ERROR TEXT
+  InputDecoration _decoration(String hint, {Widget? suffix, String? errorText}) {
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
       borderSide: const BorderSide(color: grey, width: 1),
+    );
+    final errorBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: Colors.red, width: 1),
     );
     return InputDecoration(
       hintText: hint,
@@ -85,15 +94,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       focusedBorder: border.copyWith(
         borderSide: const BorderSide(color: primary, width: 1.2),
       ),
+      errorBorder: errorBorder,
+      focusedErrorBorder: errorBorder,
       suffixIcon: suffix,
+      errorText: errorText,
+      errorStyle: GoogleFonts.inter(fontSize: 10, color: Colors.red), // Ukuran teks error
     );
   }
 
+  // FIELD DIPERBARUI AGAR MENDUKUNG ERROR TEXT & ONCHANGED
   Widget _field({
     required String label,
     required String hint,
     required TextEditingController controller,
     TextInputType? type,
+    String? errorText,
+    ValueChanged<String>? onChanged,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,14 +119,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Text(label, style: _label()),
         ),
         const SizedBox(height: 10),
-        SizedBox(
-          height: 48,
-          child: TextField(
-            controller: controller,
-            keyboardType: type,
-            style: GoogleFonts.inter(fontSize: 14),
-            decoration: _decoration(hint),
-          ),
+        // SizedBox dihapus agar tinggi TextField bisa menyesuaikan jika ada error text
+        TextField(
+          controller: controller,
+          keyboardType: type,
+          style: GoogleFonts.inter(fontSize: 14),
+          onChanged: onChanged,
+          decoration: _decoration(hint, errorText: errorText),
         ),
       ],
     );
@@ -334,6 +349,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // ---------- Aksi Tombol ----------
   void _onRegister() {
+    // Reset error terlebih dahulu
+    setState(() {
+      _hpError = null;
+      _emailError = null;
+    });
+
     // 1. Cek kolom kosong
     if (_namaC.text.trim().isEmpty ||
         _emailC.text.trim().isEmpty ||
@@ -347,16 +368,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // 2. Cek format email
+    // 2. Cek Panjang No. HP (MINIMAL 11 & MAKSIMAL 13 DIGIT)
+    final int hpLength = _hpC.text.trim().length;
+    if (hpLength < 11 || hpLength > 13) {
+      setState(() {
+        _hpError = 'No. HP harus 11 - 13 digit';
+      });
+      return; // Hentikan proses
+    }
+
+    // 3. Cek format email 
     if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_emailC.text.trim())) {
-      _showErrorDialog(
-        'Format Email Salah',
-        'Silakan periksa kembali ejaan email Anda. Pastikan menggunakan format yang benar (contoh: nama@gmail.com).',
-      );
+      setState(() {
+        _emailError = 'Format email tidak valid';
+      });
       return;
     }
 
-    // 3. Cek kriteria kata sandi
+    // 4. Cek kriteria kata sandi
     if (!_hasMinLength || !_hasUppercase || !_hasDigit) {
       _showErrorDialog(
         'Kata Sandi Belum Memenuhi Ketentuan',
@@ -365,7 +394,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // 4. Cek konfirmasi kata sandi
+    // 5. Cek konfirmasi kata sandi
     if (_passC.text != _confirmC.text) {
       _showErrorDialog(
         'Konfirmasi Kata Sandi Salah',
@@ -374,7 +403,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // 5. Cek persetujuan S&K
+    // 6. Cek persetujuan S&K
     if (!_agree) {
       _showErrorDialog(
         'Persetujuan Dibutuhkan',
@@ -436,7 +465,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           Image.asset(
                             'assets/images/start-melet-buka.png',
                             height: 76,
-                            errorBuilder: (_, _, _) => const Icon(
+                            errorBuilder: (_, __, ___) => const Icon(
                               Icons.child_care,
                               size: 76,
                               color: Colors.white,
@@ -482,18 +511,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   controller: _namaC,
                                 ),
                                 const SizedBox(height: 20),
+                                
+                                // KOLOM EMAIL DENGAN VALIDASI CAUTION MERAH
                                 _field(
                                   label: 'Alamat Email',
                                   hint: 'nama@gmail.com',
                                   controller: _emailC,
                                   type: TextInputType.emailAddress,
+                                  errorText: _emailError,
+                                  onChanged: (val) {
+                                    // Jika user mulai mengetik format yang benar, hilangkan caution merah
+                                    if (_emailError != null && RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(val.trim())) {
+                                      setState(() => _emailError = null);
+                                    }
+                                  },
                                 ),
                                 const SizedBox(height: 20),
+                                
+                                // KOLOM NO HP DENGAN VALIDASI 11-13 DIGIT
                                 _field(
                                   label: 'No.HP',
                                   hint: '08xxxxxxxxxx',
                                   controller: _hpC,
                                   type: TextInputType.phone,
+                                  errorText: _hpError,
+                                  onChanged: (val) {
+                                    final int length = val.trim().length;
+                                    // Jika error sudah muncul dan user mengetik 11 - 13 digit, hilangkan error
+                                    if (_hpError != null && length >= 11 && length <= 13) {
+                                      setState(() => _hpError = null);
+                                    }
+                                  },
                                 ),
                                 const SizedBox(height: 20),
 

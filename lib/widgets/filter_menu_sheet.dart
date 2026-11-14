@@ -43,14 +43,15 @@ class _FilterMenuSheetState extends State<FilterMenuSheet> {
     _Ingredient('Kacang-\nkacangan', '🥜'),
   ];
 
-  
   late int _selectedAge;
   final Set<int> _selectedIngredients = {};
 
-  
+  // STATE UNTUK DRAG DINAMIS
+  bool _isDragging = false;
+  double _sheetFraction = 0.9;
+
   String _normIng(String s) => s.replaceAll('\n', '').trim();
 
-  
   @override
   void initState() {
     super.initState();
@@ -70,115 +71,164 @@ class _FilterMenuSheetState extends State<FilterMenuSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return AnimatedContainer(
+      height: screenHeight * _sheetFraction,
+      duration: _isDragging ? Duration.zero : const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: SafeArea(
         top: false,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.9,
-          ),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ---------- Drag handle ----------
-                  Center(
-                    child: Container(
-                      width: 80,
-                      height: 5,
-                      margin: const EdgeInsets.only(top: 19, bottom: 17),
-                      decoration: BoxDecoration(
-                        color: dividerGrey,
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                    ),
+        child: Column(
+          children: [
+            // DRAG HANDLE (DIAM / TIDAK IKUT SCROLL)
+            GestureDetector(
+              onVerticalDragStart: (details) {
+                setState(() => _isDragging = true);
+              },
+              onVerticalDragUpdate: (details) {
+                setState(() {
+                  _sheetFraction -= details.delta.dy / screenHeight;
+                  if (_sheetFraction > 1.0) _sheetFraction = 1.0;
+                  if (_sheetFraction < 0.4) _sheetFraction = 0.4;
+                });
+              },
+              onVerticalDragEnd: (details) {
+                setState(() {
+                  _isDragging = false;
+                  if (_sheetFraction > 0.95) {
+                    _sheetFraction = 1.0;
+                  } else if (_sheetFraction < 0.75) {
+                    Navigator.of(context).pop();
+                  } else {
+                    _sheetFraction = 0.9;
+                  }
+                });
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.only(top: 27, bottom: 17),
+                alignment: Alignment.center,
+                child: Container(
+                  width: 80,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: dividerGrey,
+                    borderRadius: BorderRadius.circular(5),
                   ),
-
-                  // ---------- Title ----------
-                  Padding(
-                    padding: const EdgeInsets.only(left: 1),
-                    child: Text(
-                      'Filter Menu',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                        height: 29 / 24,
-                        color: textBlack,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 26),
-
-                  // ---------- Divider ----------
-                  Container(height: 1, color: dividerGrey),
-                  const SizedBox(height: 21),
-
-                  // ---------- Label: Usia ----------
-                  Text(
-                    'Usia',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      height: 19 / 16,
-                      color: textBlack,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // ---------- Age chips ----------
-                  Wrap(
-                    spacing: 13,
-                    runSpacing: 19,
-                    children: List.generate(
-                      _ages.length,
-                      (i) => _buildAgeChip(i),
-                    ),
-                  ),
-                  const SizedBox(height: 35),
-
-                  // ---------- Label: Bahan Makanan ----------
-                  Text(
-                    'Bahan Makanan',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      height: 19 / 16,
-                      color: textBlack,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // ---------- Grid 3x3 bahan ----------
-                  _buildIngredientGrid(),
-
-                  const SizedBox(height: 33),
-
-                  // ---------- Divider ----------
-                  Container(height: 1, color: dividerGrey),
-                  const SizedBox(height: 16),
-
-                  // ---------- Buttons ----------
-                  Row(
-                    children: [
-                      Expanded(child: _buildResetButton()),
-                      const SizedBox(width: 24),
-                      Expanded(child: _buildApplyButton()),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
+
+            // KONTEN YANG BISA DI-SCROLL
+            Flexible(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ---------- Title ----------
+                      Padding(
+                        padding: const EdgeInsets.only(left: 1),
+                        child: Text(
+                          'Filter Menu',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            height: 29 / 24,
+                            color: textBlack,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 26),
+
+                      // ---------- Divider ----------
+                      Container(height: 1, color: dividerGrey),
+                      const SizedBox(height: 21),
+
+                      // ---------- Label: Usia ----------
+                      Text(
+                        'Usia',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          height: 19 / 16,
+                          color: textBlack,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // ---------- Age chips (3 atas, 2 bawah) ----------
+                      Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: _buildAgeChip(0)),
+                              const SizedBox(width: 13),
+                              Expanded(child: _buildAgeChip(1)),
+                              const SizedBox(width: 13),
+                              Expanded(child: _buildAgeChip(2)),
+                            ],
+                          ),
+                          const SizedBox(height: 19),
+                          Row(
+                            children: [
+                              Expanded(child: _buildAgeChip(3)),
+                              const SizedBox(width: 13),
+                              Expanded(child: _buildAgeChip(4)),
+                              const SizedBox(width: 13),
+                              const Expanded(child: SizedBox()),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 19),
+
+                      // ---------- Label: Bahan Makanan ----------
+                      Text(
+                        'Bahan Makanan',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          height: 19 / 16,
+                          color: textBlack,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ---------- Grid 3x3 bahan ----------
+                      _buildIngredientGrid(),
+
+                      const SizedBox(height: 33),
+
+                      // ---------- Divider ----------
+                      Container(height: 1, color: dividerGrey),
+                      const SizedBox(height: 16),
+
+                      // ---------- Buttons ----------
+                      Row(
+                        children: [
+                          Expanded(child: _buildResetButton()),
+                          const SizedBox(width: 24),
+                          Expanded(child: _buildApplyButton()),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -190,7 +240,6 @@ class _FilterMenuSheetState extends State<FilterMenuSheet> {
     return GestureDetector(
       onTap: () => setState(() => _selectedAge = index),
       child: Container(
-        width: 107,
         height: 35,
         alignment: Alignment.center,
         decoration: BoxDecoration(
@@ -200,6 +249,7 @@ class _FilterMenuSheetState extends State<FilterMenuSheet> {
         ),
         child: Text(
           _ages[index],
+          maxLines: 1,
           style: TextStyle(
             fontFamily: 'Inter',
             fontSize: 16,
@@ -216,17 +266,17 @@ class _FilterMenuSheetState extends State<FilterMenuSheet> {
   Widget _buildIngredientGrid() {
     return Column(
       children: [
-        for (int row = 0; row < 3; row++)
-          Padding(
-            padding: EdgeInsets.only(top: row == 0 ? 0 : 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (int col = 0; col < 3; col++)
-                  _buildIngredientCard(row * 3 + col),
-              ],
-            ),
+        for (int row = 0; row < 3; row++) ...[
+          if (row > 0) const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildIngredientCard(row * 3 + 0),
+              _buildIngredientCard(row * 3 + 1),
+              _buildIngredientCard(row * 3 + 2),
+            ],
           ),
+        ],
       ],
     );
   }
@@ -259,7 +309,7 @@ class _FilterMenuSheetState extends State<FilterMenuSheet> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(item.emoji, style: const TextStyle(fontSize: 26)),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               item.name,
               textAlign: TextAlign.center,
@@ -279,27 +329,35 @@ class _FilterMenuSheetState extends State<FilterMenuSheet> {
 
   // ================= RESET BUTTON =================
   Widget _buildResetButton() {
-    return GestureDetector(
-      onTap: () => setState(() {
-        _selectedAge = 0;
-        _selectedIngredients.clear();
-      }),
-      child: Container(
-        height: 50,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: chipBg,
-          border: Border.all(color: chipBorder, width: 1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          'Reset',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            height: 19 / 16,
-            color: textBlack50,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedAge = 0;
+            _selectedIngredients.clear();
+          });
+        },
+        borderRadius: BorderRadius.circular(10),
+        splashColor: Colors.black.withValues(alpha: 0.05),
+        highlightColor: Colors.black.withValues(alpha: 0.02),
+        child: Container(
+          height: 50,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            border: Border.all(color: chipBorder, width: 1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            'Reset',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              height: 19 / 16,
+              color: textBlack50,
+            ),
           ),
         ),
       ),
@@ -308,29 +366,32 @@ class _FilterMenuSheetState extends State<FilterMenuSheet> {
 
   // ================= TERAPKAN BUTTON =================
   Widget _buildApplyButton() {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).pop({
-          'age': _ages[_selectedAge],
-          'ingredients':
-              _selectedIngredients.map((i) => _ingredients[i].name).toList(),
-        });
-      },
-      child: Container(
-        height: 50,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: primaryRed,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          'Terapkan',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            height: 19 / 16,
-            color: Colors.white,
+    return Material(
+      color: primaryRed,
+      borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).pop({
+            'age': _ages[_selectedAge],
+            'ingredients':
+                _selectedIngredients.map((i) => _ingredients[i].name).toList(),
+          });
+        },
+        splashColor: Colors.white.withValues(alpha: 0.2),
+        highlightColor: Colors.white.withValues(alpha: 0.1),
+        child: Container(
+          height: 50,
+          alignment: Alignment.center,
+          child: Text(
+            'Terapkan',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              height: 19 / 16,
+              color: Colors.white,
+            ),
           ),
         ),
       ),

@@ -1423,7 +1423,7 @@ class _TanyaAiScreenState extends State<TanyaAiScreen> {
     );
   }
 
-  Widget _inputField({
+    Widget _inputField({
     required TextEditingController controller,
     required String hint,
     VoidCallback? onSend,
@@ -1434,13 +1434,11 @@ class _TanyaAiScreenState extends State<TanyaAiScreen> {
       constraints: const BoxConstraints(minHeight: 44),
       padding: pill
           ? const EdgeInsets.fromLTRB(20, 3, 3, 3)
-          : const EdgeInsets.fromLTRB(16, 8, 10, 8),
+          : const EdgeInsets.fromLTRB(20, 3, 6, 3),
       decoration: BoxDecoration(
-        color: pill ? Colors.white : bgInput,
-        borderRadius: BorderRadius.circular(pill ? 86 : 15),
-        border: pill
-            ? Border.all(color: const Color(0xFFE0E0E0), width: 1)
-            : null,
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(86),
+        border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
         boxShadow: pill
             ? [
                 BoxShadow(
@@ -1449,15 +1447,7 @@ class _TanyaAiScreenState extends State<TanyaAiScreen> {
                   offset: const Offset(0, 2),
                 )
               ]
-            : (_step == _AiStep.result
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, -2),
-                    )
-                  ]
-                : []),
+            : [],
       ),
       child: Row(
         children: [

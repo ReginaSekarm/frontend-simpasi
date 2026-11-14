@@ -86,6 +86,19 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     }
   }
 
+  // FUNGSI UNTUK WARNA STATUS DINAMIS
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'stunting':
+        return const Color(0xFFD45060); // Merah (Primary)
+      case 'berisiko':
+        return const Color(0xFFF1A038); // Oranye
+      case 'normal':
+      default:
+        return const Color(0x80006199); // Biru
+    }
+  }
+
   String _hitungUmur(String tglLahir) {
     try {
       final parts = tglLahir.split('/');
@@ -621,8 +634,8 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
                           maxLines: 1,
                           style: google_fonts.GoogleFonts.inter(
                             fontSize: context.sp(10),
-                            fontWeight: FontWeight.w600,
-                            color: badgeGreen,
+                            fontWeight: FontWeight.w700, // 👈 SEMIBOLD DI SINI
+                            color: _getStatusColor(_currentChild.status),
                             height: 12 / 10,
                           ),
                         ),

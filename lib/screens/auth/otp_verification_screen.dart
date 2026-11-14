@@ -41,6 +41,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   
   bool _isError = false; 
 
+  // GETTER UNTUK CEK APAKAH SEMUA KOLOM OTP SUDAH TERISI
+  bool get _isOtpComplete => _otpControllers.every((c) => c.text.isNotEmpty);
+
   @override
   void initState() {
     super.initState();
@@ -92,7 +95,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   void _onVerify() {
     final code = _otpControllers.map((c) => c.text).join();
 
-    // Tetap pastikan harus diisi 4 digit
+    // Validasi panjang kode (jika karena suatu hal lolos dari tombol disabled)
     if (code.length < 4) {
       setState(() => _isError = true);
       return;
@@ -181,6 +184,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           ),
           onChanged: (value) {
             if (_isError) setState(() => _isError = false);
+            
+            // setState DITAMBAHKAN AGAR TOMBOL BISA BERUBAH WARNA SECARA REAL-TIME
+            setState(() {}); 
 
             if (value.isNotEmpty && index < 3) {
               _focusNodes[index + 1].requestFocus();
@@ -378,9 +384,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             width: 186,
                             height: 48,
                             child: ElevatedButton(
-                              onPressed: _onVerify,
+                              // LOGIKA TOMBOL DISABLED / ENABLED
+                              onPressed: _isOtpComplete ? _onVerify : null,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: accent,
+                                // Warna abu-abu jika belum lengkap, warna accent jika sudah
+                                backgroundColor: _isOtpComplete ? accent : const Color(0xFFD9D9D9),
                                 elevation: 0,
                                 padding: EdgeInsets.zero,
                                 shape: RoundedRectangleBorder(

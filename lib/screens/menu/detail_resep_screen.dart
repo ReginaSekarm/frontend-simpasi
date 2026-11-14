@@ -6,6 +6,8 @@ import '../../widgets/recipe_store.dart';
 import '../../widgets/komentar_sheet.dart';   
 import '../koleksi/koleksi_screen.dart';
 import '../home/home_ibu_screen.dart';
+import '../riwayat/riwayat_screen.dart'; // 👈 TAMBAH IMPORT RIWAYAT
+import '../profil/profil_screen.dart';   // 👈 TAMBAH IMPORT PROFIL
 
 class GoogleFonts {
   static TextStyle inter({
@@ -205,6 +207,7 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
               ),
             ),
 
+            // PERUBAHAN ADA DI BAGIAN onTap 
             BottomNav(
               currentIndex: 1,
               onTap: (i) {
@@ -220,6 +223,16 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const HomeIbuScreen()),
                     (r) => false,
+                  );
+                } else if (i == 3) {
+                  // 👈 TAMBAHAN: Direct ke Riwayat
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const RiwayatScreen()),
+                  );
+                } else if (i == 4) {
+                  // 👈 TAMBAHAN: Direct ke Profil
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ProfilScreen()),
                   );
                 }
               },

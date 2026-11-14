@@ -878,10 +878,14 @@ class _KomentarSheetState extends State<KomentarSheet> {
   Widget _buildInput() {
     return Container(
       height: 52,
-      padding: const EdgeInsets.only(left: 18, right: 14),
+      padding: const EdgeInsets.only(left: 24, right: 14), // Padding kiri disesuaikan agar teks agak ke tengah
       decoration: BoxDecoration(
-        color: inputBg,
+        color: Colors.white, // Background putih sesuai Figma
         borderRadius: BorderRadius.circular(25),
+        border: Border.all(
+          color: const Color(0xFFD9D9D9), // Border abu-abu tipis sesuai Figma
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
@@ -902,7 +906,7 @@ class _KomentarSheetState extends State<KomentarSheet> {
                 hintStyle: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
-                  color: textGrey,
+                  color: const Color(0xFF8E8E8E), // Warna hint sesuai Figma
                   height: 19 / 16,
                 ),
                 border: InputBorder.none,
@@ -919,17 +923,15 @@ class _KomentarSheetState extends State<KomentarSheet> {
             behavior: HitTestBehavior.opaque,
             child: Padding(
               padding: const EdgeInsets.all(4),
-              // === BAGIAN YANG DIUBAH: ICON KIRIM MENJADI SVG ===
               child: SvgPicture.asset(
-                'assets/images/paper-plane-outline.svg', // GANTI PATH INI SESUAI NAMA FILE SVG ANDA
-                width: 22,
-                height: 22,
+                'assets/images/paper-plane-outline.svg',
+                width: 20, // Ukuran ikon disesuaikan dengan Figma
+                height: 20,
                 colorFilter: const ColorFilter.mode(
                   primaryRed,
                   BlendMode.srcIn,
                 ),
               ),
-              // ==================================================
             ),
           ),
         ],

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:simpasi/screens/splash/splash.dart';
+import 'package:simpasi/screens/auth/register.dart';
 
 import 'widgets/responsive_wrapper.dart';
 import 'core/app_theme.dart' as app_theme;
@@ -12,8 +12,7 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-
-  // 2. PANGGIL FUNGSI INIT AGAR BADGE ANGKA LANGSUNG MUNCUL
+  
   NotificationData.init();
 
   runApp(const MyApp());
@@ -32,7 +31,7 @@ class MyApp extends StatelessWidget {
       builder: (context, child) => ResponsiveWrapper(
         child: RepaintBoundary(child: child!),
       ),
-      home: const SplashScreen(),
+      home: const RegisterScreen(),
     );
   }
 }

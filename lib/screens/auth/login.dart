@@ -8,11 +8,11 @@ import 'forgot_pass_screen.dart';
 import 'register.dart';
 
 class LoginScreen extends StatefulWidget {
-  final bool showDeletedSuccess; // <--- Tambahkan parameter ini
+  final bool showDeletedSuccess;
 
   const LoginScreen({
     super.key,
-    this.showDeletedSuccess = false, // Default false
+    this.showDeletedSuccess = false,
   });
 
   @override
@@ -30,10 +30,12 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _hidePass = true;
   bool _remember = false;
 
+  // STATE UNTUK ERROR EMAIL (CAUTION) 
+  String? _emailError;
+
   @override
   void initState() {
     super.initState();
-    // Jika diarahkan dari hapus akun, tampilkan popup setelah frame pertama selesai
     if (widget.showDeletedSuccess) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showSuccessPopup();
@@ -60,26 +62,25 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           padding: EdgeInsets.zero,
-          duration: const Duration(seconds: 2), // Tutup otomatis
-          // Posisi di dasar layar (menimpa area navbar), sama seperti contoh
+          duration: const Duration(seconds: 2),
           margin: EdgeInsets.fromLTRB(20, 0, 20, 12 + bottomInset),
           content: Center(
             child: Container(
-              width: 290, // Lebar sesuai Figma
-              height: 44, // Tinggi sesuai Figma
+              width: 290,
+              height: 44,
               decoration: BoxDecoration(
-                color: const Color(0xFF77B255), // Warna hijau sesuai Figma
+                color: const Color(0xFF77B255),
                 borderRadius: BorderRadius.circular(17),
               ),
               child: Row(
                 children: [
-                  const SizedBox(width: 21.05), // Padding kiri
+                  const SizedBox(width: 21.05),
                   const Icon(
-                    Icons.check_circle_outline, // Ikon centang
+                    Icons.check_circle_outline,
                     color: Colors.white,
                     size: 26.31,
                   ),
-                  const SizedBox(width: 12), // Jarak antara ikon dan teks
+                  const SizedBox(width: 12),
                   Text(
                     'Akun berhasil dihapus',
                     style: gfonts.GoogleFonts.inter(
@@ -96,13 +97,12 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
   }
-  // ============================================================
 
   // ================= POPUP KUSTOM LOGIN GAGAL (Figma) =================
   void _showLoginErrorDialog({required String title, required String message}) {
     showDialog(
       context: context,
-      barrierDismissible: true, // Bisa diketuk di luar untuk menutup
+      barrierDismissible: true,
       builder: (ctx) {
         return _AutoDismissLoginErrorDialog(
           title: title,
@@ -111,7 +111,6 @@ class _LoginScreenState extends State<LoginScreen> {
       },
     );
   }
-  // ====================================================================
 
   TextStyle _label() => gfonts.GoogleFonts.inter(
         fontSize: 14,
@@ -120,11 +119,17 @@ class _LoginScreenState extends State<LoginScreen> {
         color: Colors.black,
       );
 
-  InputDecoration _decoration(String hint, {Widget? suffix}) {
+  // DECORATION DIPERBARUI UNTUK MENERIMA ERROR TEXT
+  InputDecoration _decoration(String hint, {Widget? suffix, String? errorText}) {
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
       borderSide: const BorderSide(color: grey, width: 1),
     );
+    final errorBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: Colors.red, width: 1),
+    );
+    
     return InputDecoration(
       hintText: hint,
       hintStyle: gfonts.GoogleFonts.inter(
@@ -142,11 +147,22 @@ class _LoginScreenState extends State<LoginScreen> {
       focusedBorder: border.copyWith(
         borderSide: const BorderSide(color: primary, width: 1.2),
       ),
+      // Pengaturan border saat error (merah)
+      errorBorder: errorBorder,
+      focusedErrorBorder: errorBorder,
       suffixIcon: suffix,
+      // Teks error merah di bawah kolom
+      errorText: errorText,
+      errorStyle: gfonts.GoogleFonts.inter(fontSize: 10, color: Colors.red),
     );
   }
 
   void _onLogin() {
+    // Reset error terlebih dahulu
+    setState(() {
+      _emailError = null;
+    });
+
     // 1. Cek jika kolom kosong
     if (_emailC.text.isEmpty || _passC.text.isEmpty) {
       _showLoginErrorDialog(
@@ -156,8 +172,15 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // 2. Langsung arahkan ke Home jika kolom terisi
-    // (Di sini nanti Anda bisa tambahkan pemanggilan API / logika autentikasi backend)
+    // 2. Cek Format Email (Munculkan Caution Merah) 
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_emailC.text.trim())) {
+      setState(() {
+        _emailError = 'Format email tidak valid';
+      });
+      return;
+    }
+
+    // 3. Langsung arahkan ke Home jika kolom terisi dan format email benar
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => const HomeIbuScreen(showLoginSuccess: true),
@@ -181,7 +204,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // _snack tidak dipakai lagi di _onLogin, tapi dibiarkan jika masih butuh di tempat lain
   void _snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
@@ -259,15 +281,24 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Text('Alamat Email', style: _label()),
                         ),
                         const SizedBox(height: 12),
-                        SizedBox(
-                          height: 48,
-                          child: TextField(
-                            controller: _emailC,
-                            keyboardType: TextInputType.emailAddress,
-                            style: gfonts.GoogleFonts.inter(fontSize: 14),
-                            decoration: _decoration('nama@gmail.com'),
+                        
+                        // KOLOM EMAIL DENGAN VALIDASI CAUTION MERAH
+                        TextField(
+                          controller: _emailC,
+                          keyboardType: TextInputType.emailAddress,
+                          style: gfonts.GoogleFonts.inter(fontSize: 14),
+                          onChanged: (val) {
+                            // Jika user mengubah ketikan dan formatnya sudah benar, hilangkan error
+                            if (_emailError != null && RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(val.trim())) {
+                              setState(() => _emailError = null);
+                            }
+                          },
+                          decoration: _decoration(
+                            'nama@gmail.com',
+                            errorText: _emailError,
                           ),
                         ),
+                        
                         const SizedBox(height: 13),
                         Padding(
                           padding: const EdgeInsets.only(left: 9),

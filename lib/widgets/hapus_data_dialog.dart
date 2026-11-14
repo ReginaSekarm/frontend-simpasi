@@ -7,7 +7,7 @@ class HapusDataDialog extends StatelessWidget {
   static const Color _textBlack71 = Color(0xB5000000);
   static const Color _textGrey    = Color(0xFF8F8F8F);
   static const Color _redDelete   = Color(0xFFFF0020);
-  static const Color _greyBg      = Color(0x80D9D9D9);
+  static const Color _borderGrey  = Color(0xFF8F8F8F); // Warna garis tepi sesuai Figma
 
   /// Tampilkan dialog konfirmasi hapus data.
   /// Return true kalau user tap "Ya, hapus".
@@ -64,23 +64,23 @@ class HapusDataDialog extends StatelessWidget {
             // ---- Buttons Row ----
             Row(
               children: [
-                // Batal
                 Expanded(
                   child: _buildButton(
                     label: 'Batal',
-                    bgColor: _greyBg,
+                    bgColor: Colors.white,
                     textColor: _textGrey,
+                    borderColor: _borderGrey, 
                     onTap: () => Navigator.of(context).pop(false),
                   ),
                 ),
                 const SizedBox(width: 4),
 
-                // Ya, hapus
                 Expanded(
                   child: _buildButton(
                     label: 'Ya, hapus',
                     bgColor: _redDelete,
                     textColor: Colors.white,
+                    borderColor: Colors.transparent, // Tidak ada border
                     onTap: () => Navigator.of(context).pop(true),
                   ),
                 ),
@@ -92,29 +92,40 @@ class HapusDataDialog extends StatelessWidget {
     );
   }
 
+  // WIDGET BUTTON DIPERBARUI
   Widget _buildButton({
     required String label,
     required Color bgColor,
     required Color textColor,
+    required Color borderColor, // Parameter baru untuk garis tepi
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        height: 29.6,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(11.03),
+    return Material(
+      color: bgColor,
+      // Menggunakan bentuk rounded dengan sisi (border) opsional
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(11.03),
+        side: BorderSide(
+          color: borderColor,
+          width: borderColor == Colors.transparent ? 0 : 1, // 1px sesuai Figma
         ),
-        child: Text(
-          label,
-          style: google_fonts.GoogleFonts.inter(
-            fontSize: 13.32,
-            fontWeight: FontWeight.w700,
-            color: textColor,
-            height: 16 / 13.32,
+      ),
+      clipBehavior: Clip.antiAlias, // Memastikan efek ripple tidak bocor ke luar border
+      child: InkWell(
+        onTap: onTap,
+        splashColor: textColor.withValues(alpha: 0.1), // Warna ripple menyesuaikan teks
+        highlightColor: textColor.withValues(alpha: 0.05),
+        child: Container(
+          height: 29.6,
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: google_fonts.GoogleFonts.inter(
+              fontSize: 13.32,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+              height: 16 / 13.32,
+            ),
           ),
         ),
       ),
