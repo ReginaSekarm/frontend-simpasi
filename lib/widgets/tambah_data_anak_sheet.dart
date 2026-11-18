@@ -615,25 +615,24 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
     );
   }
 
-  // ================= GENDER BUTTON (SESUAI GAMBAR) =================
+  // ================= GENDER BUTTON (BG LEBIH PUDAR SAAT KEPILIH) =================
   Widget _buildGenderButton({
-    required String label, 
-    required String iconPath, 
+    required String label,
+    required String iconPath,
     required String value,
     required bool isLeft,
   }) {
-    final active = _gender == value;
-    
-    // Warna dasar
+    final active = _gender == value || (_gender.isEmpty && value == 'L');
     final Color baseColor = value == 'L' ? colorMale : colorFemale;
 
-    // LOGIKA STATE (BELUM & SUDAH DIKLIK) 
-    final Color bg = active ? baseColor : bgDefault;
-    final Color borderColor = active ? Colors.transparent : baseColor;
-    final Color contentColor = active ? Colors.white : baseColor;
+    // Saat kepilih bg lebih pudar (alpha 0.3), saat tidak kepilih tetap bgDefault (alpha 0.7)
+    final Color bg = active
+        ? const Color(0xFFD9D9D9).withValues(alpha: 0.3)
+        : bgDefault;
+    final Color borderColor = active ? baseColor : Colors.transparent;
+    final Color contentColor = active ? baseColor : textGrey;
 
-    // Radius menyatu
-    const r = Radius.circular(_radius);
+    const r = Radius.circular(12);
     final borderRadius = BorderRadius.horizontal(
       left: isLeft ? r : Radius.zero,
       right: isLeft ? Radius.zero : r,
@@ -647,13 +646,12 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
         splashColor: baseColor.withValues(alpha: 0.2),
         highlightColor: baseColor.withValues(alpha: 0.1),
         child: Container(
-          height: 39, // Sesuai tinggi Figma
+          height: 40,
           decoration: BoxDecoration(
             color: bg,
-            borderRadius: borderRadius, 
-            // Border 2px sesuai Figma
+            borderRadius: borderRadius,
             border: Border.all(
-              color: borderColor, 
+              color: borderColor,
               width: 2,
             ),
           ),
@@ -661,18 +659,18 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SvgPicture.asset(
-                iconPath, 
-                width: 24, 
-                height: 24, 
+                iconPath,
+                width: 18,
+                height: 18,
                 colorFilter: ColorFilter.mode(contentColor, BlendMode.srcIn),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Text(
-                label, 
+                label,
                 style: GoogleFonts.inter(
-                  fontSize: 15, // Sesuai ukuran font Figma
-                  fontWeight: FontWeight.w500, // Sesuai Figma
-                  color: contentColor
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: contentColor,
                 ),
               ),
             ],
@@ -694,15 +692,15 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
       switch (kondisi) {
         case 'Normal':
           bgColor = normalBg; textColor = normalText; 
-          borderColor = normalText; // 👈 Border dikembalikan
+          borderColor = normalText; 
           break;
         case 'Berisiko':
           bgColor = const Color(0x80FFD444); textColor = const Color(0xFFE38621); 
-          borderColor = textColor; // 👈 Border dikembalikan
+          borderColor = textColor; 
           break;
         default: // Stunting
           bgColor = const Color(0x80FFC2B4); textColor = const Color(0xFFDD2E44); 
-          borderColor = textColor; // 👈 Border dikembalikan
+          borderColor = textColor; 
           break;
       }
     }
