@@ -33,6 +33,13 @@ class DetailPemeriksaanScreen extends StatelessWidget {
   final String lila;
   final String catatan;
   final String pemeriksaanBerikutnya;
+  final String namaBalita;
+  final String usiaBalita;
+  final String jenisKelamin;
+  final String namaOrangTua;
+  final String tempatTglLahir;
+  final String emailOrangTua;
+  final List<String> bahanRekomendasi;
 
   const DetailPemeriksaanScreen({
     super.key,
@@ -46,6 +53,13 @@ class DetailPemeriksaanScreen extends StatelessWidget {
     required this.lila,
     required this.catatan,
     required this.pemeriksaanBerikutnya,
+    this.namaBalita = 'Kentoz Albaiq',
+    this.usiaBalita = '10 Bulan',
+    this.jenisKelamin = 'Laki-laki',
+    this.namaOrangTua = 'Ajeng Febria',
+    this.tempatTglLahir = 'Denpasar, 01/12/2025',
+    this.emailOrangTua = 'AjengFebria01@gmail.com',
+    this.bahanRekomendasi = const ['Ayam', 'Telur', 'Sayuran', 'Buah'],
   });
 
   // Warna dari Figma
@@ -69,6 +83,27 @@ class DetailPemeriksaanScreen extends StatelessWidget {
       default:
         return statusGreen;
     }
+  }
+
+  List<String> get _resolvedBahan {
+    final cleaned = bahanRekomendasi
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    return cleaned.isNotEmpty
+        ? cleaned
+        : const ['Ayam', 'Telur', 'Sayuran', 'Buah'];
+  }
+
+  void _openMenuWithIngredients(BuildContext context, List<String> ingredients) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MenuScreen(
+          fromPemeriksaan: true,
+          initialIngredients: ingredients,
+        ),
+      ),
+    );
   }
 
   @override
@@ -103,31 +138,17 @@ class DetailPemeriksaanScreen extends StatelessWidget {
 
                   const SizedBox(height: 28),
 
-                  _buildSectionTitle(
-                      'BAHAN MAKANAN YANG DIREKOMENDASIKAN'),
+                  _buildSectionTitle('BAHAN MAKANAN YANG DIREKOMENDASIKAN'),
                   const SizedBox(height: 22),
-                  _buildBahanChips(),
+                  _buildBahanChips(context),
                   const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Align(
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
-                          onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const MenuScreen(
-                                fromPemeriksaan: true,
-                                initialIngredients: [
-                                  'Ayam',
-                                  'Telur',
-                                  'Sayuran',
-                                  'Buah',
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                        onTap: () =>
+                            _openMenuWithIngredients(context, _resolvedBahan),
                         behavior: HitTestBehavior.opaque,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -375,22 +396,22 @@ class DetailPemeriksaanScreen extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _buildField('Nama Lengkap', 'Kentoz Albaiq')),
-              Expanded(child: _buildField('Usia', '10 Bulan')),
+              Expanded(child: _buildField('Nama Lengkap', namaBalita)),
+              Expanded(child: _buildField('Usia', usiaBalita)),
             ],
           ),
           const SizedBox(height: 14),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _buildField('Jenis Kelamin', 'Laki-laki')),
-              Expanded(child: _buildField('Nama Orang Tua', 'Ajeng Febria')),
+              Expanded(child: _buildField('Jenis Kelamin', jenisKelamin)),
+              Expanded(child: _buildField('Nama Orang Tua', namaOrangTua)),
             ],
           ),
           const SizedBox(height: 14),
-          _buildField('Tempat & Tgl Lahir', 'Denpasar, 01/12/2025'),
+          _buildField('Tempat & Tgl Lahir', tempatTglLahir),
           const SizedBox(height: 14),
-          _buildField('Email', 'AjengFebria01@gmail.com'),
+          _buildField('Email', emailOrangTua),
         ],
       ),
     );
@@ -509,8 +530,8 @@ class DetailPemeriksaanScreen extends StatelessWidget {
   }
 
   // ================= BAHAN CHIPS =================
-  Widget _buildBahanChips() {
-    const bahan = ['Ayam', 'Telur', 'Sayuran', 'Buah'];
+  Widget _buildBahanChips(BuildContext context) {
+    final bahan = _resolvedBahan;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Wrap(
@@ -518,9 +539,7 @@ class DetailPemeriksaanScreen extends StatelessWidget {
         runSpacing: 11,
         children: bahan.map((b) {
           return GestureDetector(
-            onTap: () {
-              // TODO: filter resep MPASI berdasarkan bahan ini
-            },
+            onTap: () => _openMenuWithIngredients(context, [b]),
             child: Container(
               width: 82.45,
               height: 31.51,
@@ -532,6 +551,8 @@ class DetailPemeriksaanScreen extends StatelessWidget {
               ),
               child: Text(
                 b,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
                   fontSize: 12.6,
                   fontWeight: FontWeight.w600,

@@ -37,35 +37,35 @@ class TambahDataAnakSheet extends StatefulWidget {
 }
 
 class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
-  static const Color primaryRed   = Color(0xFFD45060);
-  static const Color textBlack    = Color(0xFF000000);
-  static const Color textGrey     = Color(0xFF8F8F8F); 
-  static const Color inputBorder  = Color(0xFFE0E0E0); 
-  static const Color errorRed     = Color(0xFFFF0020);
-  
-  static const Color dividerGrey  = Color(0xFFD9D9D9);
-  
+  static const Color primaryRed = Color(0xFFD45060);
+  static const Color textBlack = Color(0xFF000000);
+  static const Color textGrey = Color(0xFF8F8F8F);
+  static const Color inputBorder = Color(0xFFE0E0E0);
+  static const Color errorRed = Color(0xFFFF0020);
+
+  static const Color dividerGrey = Color(0xFFD9D9D9);
+
   // Warna sesuai CSS Figma
-  static const Color colorMale    = Color(0xFF8BB7D4); // Biru Muda
-  static const Color colorFemale  = Color(0xFFE38D93); // Pink Muda
-  static const Color bgDefault    = Color(0xB3D9D9D9); // #D9D9D9 dengan Opacity 0.7
-  
-  static const Color normalBg     = Color(0x33006199);
-  static const Color normalText   = Color(0x80006199);
+  static const Color colorMale = Color(0xFF8BB7D4); // Biru Muda
+  static const Color colorFemale = Color(0xFFE38D93); // Pink Muda
+  static const Color bgDefault = Color(0xB3D9D9D9); // #D9D9D9 dengan Opacity 0.7
 
-  static const double _radius  = 13.84; // Sesuai Figma
-  static const double _fieldH  = 48.0; 
+  static const Color normalBg = Color(0x33006199);
+  static const Color normalText = Color(0x80006199);
 
-  final _namaC    = TextEditingController();
-  final _tempatC  = TextEditingController();
-  final _tglC     = TextEditingController();
-  final _bbC      = TextEditingController();
-  final _tbC      = TextEditingController();
-  final _kepalaC  = TextEditingController();
-  final _lilaC    = TextEditingController();
+  static const double _radius = 13.84; // Sesuai Figma
+  static const double _fieldH = 48.0;
 
-  String _gender  = ''; 
-  String _kondisi = ''; 
+  final _namaC = TextEditingController();
+  final _tempatC = TextEditingController();
+  final _tglC = TextEditingController();
+  final _bbC = TextEditingController();
+  final _tbC = TextEditingController();
+  final _kepalaC = TextEditingController();
+  final _lilaC = TextEditingController();
+
+  String _gender = '';
+  String _kondisi = '';
   String _calculatedUmur = '0 Bulan';
 
   bool _namaError = false;
@@ -73,7 +73,7 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
   bool _tglError = false;
 
   bool _isDragging = false;
-  double _sheetFraction = 0.88; 
+  double _sheetFraction = 0.88;
 
   bool get _isEditMode => widget.initialData != null;
 
@@ -82,15 +82,15 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
     super.initState();
     final d = widget.initialData;
     if (d != null) {
-      _namaC.text   = d.nama;
-      _tempatC.text = d.tempat;
-      _tglC.text    = d.tanggalLahir;
-      _bbC.text     = d.bb;
-      _tbC.text     = d.tb;
-      _kepalaC.text = d.kepala;
-      _lilaC.text   = d.lila;
-      _gender       = d.gender;
-      _kondisi      = d.kondisi;
+      _namaC.text = d.nama;
+      _tempatC.text = d.tempat.trim() == '-' ? '' : d.tempat.trim();
+      _tglC.text = d.tanggalLahir;
+      _bbC.text = d.bb == '-' ? '' : d.bb;
+      _tbC.text = d.tb == '-' ? '' : d.tb;
+      _kepalaC.text = d.kepala == '-' ? '' : d.kepala;
+      _lilaC.text = d.lila == '-' ? '' : d.lila;
+      _gender = d.gender;
+      _kondisi = d.kondisi;
       if (d.tanggalLahir.isNotEmpty) _hitungUmurString(d.tanggalLahir);
     }
   }
@@ -105,6 +105,24 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
     _kepalaC.dispose();
     _lilaC.dispose();
     super.dispose();
+  }
+
+  DateTime? _parseDdMmYyyy(String tglStr, DateTime now) {
+    try {
+      final parts = tglStr.trim().split('/');
+      if (parts.length != 3) return null;
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+      final parsed = DateTime(year, month, day);
+      if (parsed.year != year || parsed.month != month || parsed.day != day) {
+        return null;
+      }
+      if (parsed.isAfter(now)) return now;
+      return parsed;
+    } catch (_) {
+      return null;
+    }
   }
 
   void _hitungUmur(DateTime birthDate) {
@@ -142,9 +160,9 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
 
   void _simpan() {
     setState(() {
-      _namaError = _namaC.text.isEmpty;
-      _tempatError = _tempatC.text.isEmpty;
-      _tglError = _tglC.text.isEmpty;
+      _namaError = _namaC.text.trim().isEmpty;
+      _tempatError = _tempatC.text.trim().isEmpty;
+      _tglError = _tglC.text.trim().isEmpty;
     });
 
     if (_namaError || _tempatError || _tglError) {
@@ -152,15 +170,16 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
     }
 
     Navigator.of(context).pop({
-      'nama':   _namaC.text,
+      'nama': _namaC.text.trim(),
       'gender': _gender.isEmpty ? 'L' : _gender,
-      'umur':   _calculatedUmur,
-      'berat':  _bbC.text.isEmpty ? '-' : _bbC.text,     
-      'tinggi': _tbC.text.isEmpty ? '-' : _tbC.text,     
-      'kepala': _kepalaC.text.isEmpty ? '-' : _kepalaC.text,
-      'lila':   _lilaC.text.isEmpty ? '-' : _lilaC.text,
+      'tempat': _tempatC.text.trim(),
+      'umur': _calculatedUmur,
+      'berat': _bbC.text.trim().isEmpty ? '-' : _bbC.text.trim(),
+      'tinggi': _tbC.text.trim().isEmpty ? '-' : _tbC.text.trim(),
+      'kepala': _kepalaC.text.trim().isEmpty ? '-' : _kepalaC.text.trim(),
+      'lila': _lilaC.text.trim().isEmpty ? '-' : _lilaC.text.trim(),
       'status': _kondisi.isEmpty ? 'Normal' : _kondisi,
-      'tanggalLahir': _tglC.text,
+      'tanggalLahir': _tglC.text.trim(),
     });
   }
 
@@ -185,11 +204,11 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
           setState(() {
             _isDragging = false;
             if (_sheetFraction > 0.92) {
-              _sheetFraction = 1.0; 
+              _sheetFraction = 1.0;
             } else if (_sheetFraction < 0.75) {
-              Navigator.of(context).pop(); 
+              Navigator.of(context).pop();
             } else {
-              _sheetFraction = 0.88; 
+              _sheetFraction = 0.88;
             }
           });
         },
@@ -197,7 +216,7 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
           duration: _isDragging ? Duration.zero : const Duration(milliseconds: 300),
           curve: Curves.easeOutCubic,
           constraints: BoxConstraints(
-            maxHeight: screenHeight * _sheetFraction, 
+            maxHeight: screenHeight * _sheetFraction,
           ),
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -212,32 +231,33 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                   padding: const EdgeInsets.only(top: 24, bottom: 20),
                   child: Center(
                     child: Container(
-                      width: 60, 
+                      width: 60,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: dividerGrey, 
+                        color: dividerGrey,
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                   ),
                 ),
-
                 Flexible(
                   child: SingleChildScrollView(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(21, 0, 21, 28),
                       child: Column(
-                        mainAxisSize: MainAxisSize.min, 
+                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Center(
                             child: Text(
                               _isEditMode ? 'Ubah Data Anak' : 'Tambah Data Anak',
-                              style: GoogleFonts.inter(fontSize: 18.57, fontWeight: FontWeight.w700, color: textBlack),
+                              style: GoogleFonts.inter(
+                                  fontSize: 18.57,
+                                  fontWeight: FontWeight.w700,
+                                  color: textBlack),
                             ),
                           ),
                           const SizedBox(height: 26),
-
                           _buildLabel('Nama Lengkap'),
                           const SizedBox(height: 6),
                           _buildTextField(
@@ -246,7 +266,9 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                             isError: _namaError,
                             errorText: 'Nama wajib diisi',
                             onChanged: (val) {
-                              if (val.isNotEmpty && _namaError) setState(() => _namaError = false);
+                              if (val.isNotEmpty && _namaError) {
+                                setState(() => _namaError = false);
+                              }
                             },
                           ),
                           const SizedBox(height: 20),
@@ -256,8 +278,18 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                           const SizedBox(height: 10),
                           Row(
                             children: [
-                              Expanded(child: _buildGenderButton(label: 'Laki-laki', iconPath: 'assets/images/male.svg', value: 'L', isLeft: true)),
-                              Expanded(child: _buildGenderButton(label: 'Perempuan', iconPath: 'assets/images/female.svg', value: 'P', isLeft: false)),
+                              Expanded(
+                                  child: _buildGenderButton(
+                                      label: 'Laki-laki',
+                                      iconPath: 'assets/images/male.svg',
+                                      value: 'L',
+                                      isLeft: true)),
+                              Expanded(
+                                  child: _buildGenderButton(
+                                      label: 'Perempuan',
+                                      iconPath: 'assets/images/female.svg',
+                                      value: 'P',
+                                      isLeft: false)),
                             ],
                           ),
                           const SizedBox(height: 20),
@@ -277,7 +309,9 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                                       isError: _tempatError,
                                       errorText: 'Tempat wajib diisi',
                                       onChanged: (val) {
-                                        if (val.isNotEmpty && _tempatError) setState(() => _tempatError = false);
+                                        if (val.isNotEmpty && _tempatError) {
+                                          setState(() => _tempatError = false);
+                                        }
                                       },
                                     ),
                                   ],
@@ -293,22 +327,29 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                                     _buildTextField(
                                       controller: _tglC,
                                       hint: 'dd/mm/yyyy',
-                                      suffixIcon: Icons.calendar_month, 
+                                      suffixIcon: Icons.calendar_month,
                                       isError: _tglError,
                                       errorText: 'Tanggal wajib diisi',
                                       onChanged: (val) {
-                                        if (val.isNotEmpty && _tglError) setState(() => _tglError = false);
+                                        if (val.isNotEmpty && _tglError) {
+                                          setState(() => _tglError = false);
+                                        }
                                       },
                                       onTap: () async {
+                                        final now = DateTime.now();
+                                        final initialDate =
+                                            _parseDdMmYyyy(_tglC.text, now) ?? now;
                                         final picked = await showDatePicker(
                                           context: context,
-                                          initialDate: DateTime(2024),
-                                          firstDate: DateTime(2020),
-                                          lastDate: DateTime.now(),
+                                          initialDate: initialDate,
+                                          firstDate: DateTime(
+                                              now.year - 10, now.month, now.day),
+                                          lastDate: now,
                                         );
                                         if (picked != null) {
                                           setState(() {
-                                            _tglC.text = '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
+                                            _tglC.text =
+                                                '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
                                             _tglError = false;
                                           });
                                           _hitungUmur(picked);
@@ -332,7 +373,11 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                                     Row(
                                       children: [
                                         _buildLabel('Berat'),
-                                        Text(' (opsional)', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: textGrey)),
+                                        Text(' (opsional)',
+                                            style: GoogleFonts.inter(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w400,
+                                                color: textGrey)),
                                       ],
                                     ),
                                     const SizedBox(height: 6),
@@ -340,7 +385,7 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                                       controller: _bbC,
                                       keyboardType: TextInputType.number,
                                       hint: 'Contoh: 7.5',
-                                      unit: 'kg', 
+                                      unit: 'kg',
                                     ),
                                   ],
                                 ),
@@ -353,7 +398,11 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                                     Row(
                                       children: [
                                         _buildLabel('Tinggi', indent: 1.5),
-                                        Text(' (opsional)', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: textGrey)),
+                                        Text(' (opsional)',
+                                            style: GoogleFonts.inter(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w400,
+                                                color: textGrey)),
                                       ],
                                     ),
                                     const SizedBox(height: 6),
@@ -361,7 +410,7 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                                       controller: _tbC,
                                       keyboardType: TextInputType.number,
                                       hint: 'Contoh: 65',
-                                      unit: 'cm', 
+                                      unit: 'cm',
                                     ),
                                   ],
                                 ),
@@ -380,7 +429,11 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                                     Row(
                                       children: [
                                         _buildLabel('Kepala'),
-                                        Text(' (opsional)', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: textGrey)),
+                                        Text(' (opsional)',
+                                            style: GoogleFonts.inter(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w400,
+                                                color: textGrey)),
                                       ],
                                     ),
                                     const SizedBox(height: 6),
@@ -388,7 +441,7 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                                       controller: _kepalaC,
                                       keyboardType: TextInputType.number,
                                       hint: 'Contoh: 40',
-                                      unit: 'cm', 
+                                      unit: 'cm',
                                     ),
                                   ],
                                 ),
@@ -401,7 +454,11 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                                     Row(
                                       children: [
                                         _buildLabel('LiLA', indent: 1.5),
-                                        Text(' (opsional)', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: textGrey)),
+                                        Text(' (opsional)',
+                                            style: GoogleFonts.inter(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w400,
+                                                color: textGrey)),
                                       ],
                                     ),
                                     const SizedBox(height: 6),
@@ -409,7 +466,7 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                                       controller: _lilaC,
                                       keyboardType: TextInputType.number,
                                       hint: 'Contoh: 14',
-                                      unit: 'cm', 
+                                      unit: 'cm',
                                     ),
                                   ],
                                 ),
@@ -420,18 +477,28 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
 
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-                            decoration: BoxDecoration(color: const Color(0xFFDDF3F1), borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 13, vertical: 11),
+                            decoration: BoxDecoration(
+                                color: const Color(0xFFDDF3F1),
+                                borderRadius: BorderRadius.circular(10)),
                             child: RichText(
                               text: TextSpan(
                                 children: [
                                   TextSpan(
                                     text: 'Cara mengukur lingkar lengan atas: ',
-                                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF1A7772)),
+                                    style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF1A7772)),
                                   ),
                                   TextSpan(
-                                    text: 'lingkarkan pita di tengah lengan kiri atas antara bahu dan siku. Belum punya angkanya? Kosongkan dulu, kader bisa mengisinya.',
-                                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: const Color(0xFF1A7772)),
+                                    text:
+                                        'lingkarkan pita di tengah lengan kiri atas antara bahu dan siku. Belum punya angkanya? Kosongkan dulu, kader bisa mengisinya.',
+                                    style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w400,
+                                        color: const Color(0xFF1A7772)),
                                   ),
                                 ],
                               ),
@@ -442,7 +509,11 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                           Row(
                             children: [
                               _buildLabel('Kondisi Balita'),
-                              Text(' (opsional)', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: textGrey)),
+                              Text(' (opsional)',
+                                  style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w400,
+                                      color: textGrey)),
                             ],
                           ),
                           const SizedBox(height: 11),
@@ -473,13 +544,21 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                                     child: SizedBox(
                                       height: 50,
                                       child: OutlinedButton(
-                                        onPressed: () => Navigator.of(context).pop(),
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(),
                                         style: OutlinedButton.styleFrom(
                                           backgroundColor: Colors.white,
-                                          side: const BorderSide(color: errorRed, width: 1),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          side: const BorderSide(
+                                              color: errorRed, width: 1),
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10)),
                                         ),
-                                        child: Text('Batal', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: errorRed)),
+                                        child: Text('Batal',
+                                            style: GoogleFonts.inter(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                color: errorRed)),
                                       ),
                                     ),
                                   ),
@@ -493,9 +572,15 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: primaryRed,
                                           elevation: 0,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10)),
                                         ),
-                                        child: Text('Simpan Data', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                                        child: Text('Simpan Data',
+                                            style: GoogleFonts.inter(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white)),
                                       ),
                                     ),
                                   ),
@@ -517,12 +602,14 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
     );
   }
 
-  Widget _buildLabel(String text, {double indent = 5.6, Color color = textBlack}) {
+  Widget _buildLabel(String text,
+      {double indent = 5.6, Color color = textBlack}) {
     return Padding(
       padding: EdgeInsets.only(left: indent),
       child: Text(
         text,
-        style: GoogleFonts.inter(fontSize: 14.86, fontWeight: FontWeight.w600, color: color),
+        style: GoogleFonts.inter(
+            fontSize: 14.86, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }
@@ -531,8 +618,8 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
     required TextEditingController controller,
     String? hint,
     TextInputType? keyboardType,
-    IconData? suffixIcon, 
-    String? unit, 
+    IconData? suffixIcon,
+    String? unit,
     VoidCallback? onTap,
     bool isError = false,
     String? errorText,
@@ -551,7 +638,7 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
               width: isError ? 1.5 : 1.0,
             ),
             boxShadow: [
-              if (!isError) 
+              if (!isError)
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.03),
                   blurRadius: 4,
@@ -568,17 +655,24 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                   readOnly: onTap != null,
                   onTap: onTap,
                   onChanged: onChanged,
-                  style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: textBlack),
+                  style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: textBlack),
                   decoration: InputDecoration(
                     hintText: hint,
-                    hintStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400, color: textGrey),
+                    hintStyle: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: textGrey),
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(_radius),
-                      borderSide: const BorderSide(color: primaryRed, width: 1.5), 
+                      borderSide: const BorderSide(color: primaryRed, width: 1.5),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 14),
                     isDense: true,
                   ),
                 ),
@@ -588,7 +682,10 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                   padding: const EdgeInsets.only(right: 14),
                   child: Text(
                     unit,
-                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: textGrey),
+                    style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: textGrey),
                   ),
                 ),
               if (suffixIcon != null)
@@ -597,7 +694,8 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: const EdgeInsets.only(right: 14, left: 8),
-                    child: Icon(suffixIcon, size: 20, color: isError ? errorRed : textGrey),
+                    child: Icon(suffixIcon,
+                        size: 20, color: isError ? errorRed : textGrey),
                   ),
                 ),
             ],
@@ -608,7 +706,8 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
             padding: const EdgeInsets.only(top: 4, left: 8),
             child: Text(
               errorText,
-              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w400, color: errorRed),
+              style: GoogleFonts.inter(
+                  fontSize: 10, fontWeight: FontWeight.w400, color: errorRed),
             ),
           ),
       ],
@@ -683,24 +782,23 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
   // ================= KONDISI BUTTON (BORDER KEMBALI SESUAI GAMBAR) =================
   Widget _buildKondisiButton(String kondisi) {
     final active = _kondisi == kondisi;
-    
-    Color bgColor = const Color(0x80D9D9D9); 
+
+    Color bgColor = const Color(0x80D9D9D9);
     Color textColor = textBlack;
-    Color borderColor = Colors.transparent;
 
     if (active) {
       switch (kondisi) {
         case 'Normal':
-          bgColor = normalBg; textColor = normalText; 
-          borderColor = normalText; 
+          bgColor = normalBg;
+          textColor = normalText;
           break;
         case 'Berisiko':
-          bgColor = const Color(0x80FFD444); textColor = const Color(0xFFE38621); 
-          borderColor = textColor; 
+          bgColor = const Color(0x80FFD444);
+          textColor = const Color(0xFFE38621);
           break;
         default: // Stunting
-          bgColor = const Color(0x80FFC2B4); textColor = const Color(0xFFDD2E44); 
-          borderColor = textColor; 
+          bgColor = const Color(0x80FFC2B4);
+          textColor = const Color(0xFFDD2E44);
           break;
       }
     }
@@ -709,12 +807,12 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
       onTap: () => setState(() => _kondisi = kondisi),
       behavior: HitTestBehavior.opaque,
       child: Container(
-        height: 37.19, 
+        height: 37.19,
         decoration: BoxDecoration(
-          color: bgColor, 
-          borderRadius: BorderRadius.circular(13.84), 
+          color: bgColor,
+          borderRadius: BorderRadius.circular(13.84),
           border: Border.all(
-            color: Colors.transparent, 
+            color: Colors.transparent,
             width: 0,
           ),
         ),
@@ -722,25 +820,25 @@ class _TambahDataAnakSheetState extends State<TambahDataAnakSheet> {
           alignment: Alignment.center,
           children: [
             Positioned(
-              left: 17.5, 
-              top: 0, 
+              left: 17.5,
+              top: 0,
               bottom: 0,
               child: Center(
                 child: Container(
-                  width: 6.5, 
-                  height: 6.5, 
+                  width: 6.5,
+                  height: 6.5,
                   decoration: BoxDecoration(
-                    color: textColor, 
+                    color: textColor,
                     shape: BoxShape.circle,
                   ),
                 ),
               ),
             ),
             Text(
-              kondisi, 
+              kondisi,
               style: GoogleFonts.inter(
-                fontSize: 14.86, 
-                fontWeight: FontWeight.w700, 
+                fontSize: 14.86,
+                fontWeight: FontWeight.w700,
                 color: textColor,
               ),
             ),

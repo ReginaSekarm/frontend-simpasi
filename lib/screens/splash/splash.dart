@@ -3,8 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-
-import '../onboarding/onboarding1.dart';
+import 'package:go_router/go_router.dart';
 
 /// Ukuran frame desain (Figma)
 const double kW = 393;
@@ -225,20 +224,11 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
 
-    // Jika ada callback onFinished dari luar, panggil; jika tidak, langsung ke OnboardingPage
+    // Gunakan GoRouter agar alur rute tetap konsisten dengan main.dart
     if (widget.onFinished != null) {
       widget.onFinished!();
     } else {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 600),
-          pageBuilder: (_, _, _) => const OnboardingPage(),
-          transitionsBuilder: (_, anim, _, child) => FadeTransition(
-            opacity: CurvedAnimation(parent: anim, curve: Curves.easeInOut),
-            child: child,
-          ),
-        ),
-      );
+      context.go('/login');
     }
   }
 

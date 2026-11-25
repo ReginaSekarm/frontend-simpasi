@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../services/auth_service.dart';
+import '../../services/user_service.dart';
 import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
 import '../../widgets/notification_icon.dart';
@@ -10,7 +12,7 @@ import '../riwayat/riwayat_screen.dart';
 import 'edit_profil_screen.dart';
 import 'pengaturan_screen.dart';
 import '../notifikasi/notifikasi_screen.dart';
-import '../auth/login.dart'; // 👈 TAMBAH: import LoginScreen (sesuaikan path)
+import '../auth/login.dart';
 
 // Mock GoogleFonts
 class GoogleFonts {
@@ -49,7 +51,48 @@ class _ProfilScreenState extends State<ProfilScreen> {
   static const Color exitRed      = Color(0xFFFF0000);
   static const Color exitBg       = Color(0x1AFF0000);
 
-  String _nama = 'Aisyah';
+  // Data profil dari backend
+  String _nama = '';
+  String _email = '';
+  String _phone = '';
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final result = await UserService.getProfile();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      final p = result.profile;
+      if (p != null) {
+        _nama = p.fullName;
+        _email = p.email;
+        _phone = p.phone;
+      }
+    });
+    if (result.error != null) _snack(result.error!);
+  }
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  String get _tampilNama {
+    if (_loading) return 'Memuat...';
+    return _nama.trim().isEmpty ? 'Pengguna' : _nama.trim();
+  }
+
+  String get _inisial {
+    final n = _nama.trim();
+    return n.isEmpty ? '?' : n[0].toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -190,13 +233,19 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SizedBox(height: context.w(40)),
-                  Text(
-                    _nama,
-                    style: GoogleFonts.inter(
-                      fontSize: context.sp(24),
-                      fontWeight: FontWeight.w700,
-                      color: textBlack,
-                      height: 29 / 24,
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: context.w(16)),
+                    child: Text(
+                      _tampilNama,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: context.sp(24),
+                        fontWeight: FontWeight.w700,
+                        color: textBlack,
+                        height: 29 / 24,
+                      ),
                     ),
                   ),
                   SizedBox(height: context.w(8)),
@@ -238,7 +287,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  'A',
+                  _inisial,
                   style: GoogleFonts.inter(
                     fontSize: context.sp(49),
                     fontWeight: FontWeight.w700,
@@ -271,13 +320,23 @@ class _ProfilScreenState extends State<ProfilScreen> {
               icon: Icons.account_circle,
               label: 'Edit profil',
               onTap: () async {
-                final result = await Navigator.of(context).push<String>(
+                // Data profil harus sudah termuat sebelum diedit
+                if (_loading) return;
+
+                final berhasil = await Navigator.of(context).push<bool>(
                   MaterialPageRoute(
-                    builder: (_) => EditProfilScreen(namaLengkap: _nama),
+                    builder: (_) => EditProfilScreen(
+                      namaLengkap: _nama,
+                      email: _email,
+                      noHp: _phone,
+                    ),
                   ),
                 );
-                if (result != null && result.isNotEmpty) {
-                  setState(() => _nama = result);
+
+                // Disimpan -> muat ulang dari backend
+                if (berhasil == true) {
+                  await _loadProfile();
+                  if (mounted) _snack('Profil berhasil diperbarui');
                 }
               },
             ),
@@ -419,14 +478,13 @@ class _ProfilScreenState extends State<ProfilScreen> {
 
                         // Tombol Keluar
                         GestureDetector(
-                          onTap: () {
+                          onTap: () async {
                             // 1) Tutup dialog konfirmasi
                             Navigator.pop(context);
 
-                            // 2) (Opsional) Bersihkan state akun di sini:
-                            //    - clear session / token
-                            //    - reset favorite store, dsb.
-                            //    Contoh: AuthService.logout();
+                            // 2) Logout ke backend (token masuk blacklist) lalu hapus token lokal
+                            await AuthService.logout();
+                            if (!mounted) return;
 
                             // 3) Arahkan ke Login dan hapus seluruh riwayat
                             //    navigasi supaya user tidak bisa back ke Profil.

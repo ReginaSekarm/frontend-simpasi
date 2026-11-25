@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/user_service.dart';
 import '../../utils/responsive.dart';
 
 class GoogleFonts {
@@ -50,6 +51,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
   late TextEditingController _hpC;
 
   bool _hasChanges = false;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -67,33 +69,82 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     super.dispose();
   }
 
-  // FUNGSI CEK PERUBAHAN
-  void _checkChanges() {
-    final hasChanged = 
-        _namaC.text != widget.namaLengkap ||
-        _emailC.text != (widget.email ?? '') ||
-        _hpC.text != (widget.noHp ?? '');
-
-    if (hasChanged != _hasChanges) {
-      setState(() {
-        _hasChanges = hasChanged;
-      });
-    }
+  String get _inisial {
+    final n = _namaC.text.trim().isEmpty ? widget.namaLengkap.trim() : _namaC.text.trim();
+    return n.isEmpty ? '?' : n[0].toUpperCase();
   }
 
-  void _simpan() {
+  // FUNGSI CEK PERUBAHAN (juga memperbarui nama di samping avatar secara langsung)
+  void _checkChanges() {
+    final hasChanged =
+        _namaC.text.trim() != widget.namaLengkap.trim() ||
+        _emailC.text.trim() != (widget.email ?? '').trim() ||
+        _hpC.text.trim() != (widget.noHp ?? '').trim();
+
+    setState(() {
+      _hasChanges = hasChanged;
+    });
+  }
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  // ================= SIMPAN KE BACKEND =================
+  Future<void> _simpan() async {
+    if (_saving) return;
+
     final nama = _namaC.text.trim();
+    final email = _emailC.text.trim();
+    final hp = _hpC.text.replaceAll(RegExp(r'[\s-]'), '');
+    final digitHp = hp.replaceAll('+', '');
+
+    // Validasi (aturan sama dengan backend)
     if (nama.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nama lengkap wajib diisi')),
-      );
+      _snack('Nama lengkap wajib diisi');
       return;
     }
-    Navigator.of(context).pop(nama);
+    if (nama.length > 100) {
+      _snack('Nama lengkap maksimal 100 karakter');
+      return;
+    }
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      _snack('Format email tidak valid');
+      return;
+    }
+    if (!RegExp(r'^\+?\d+$').hasMatch(hp)) {
+      _snack('Nomor HP hanya boleh berisi angka');
+      return;
+    }
+    if (digitHp.length < 10 || digitHp.length > 15) {
+      _snack('Nomor HP harus terdiri dari 10 hingga 15 digit');
+      return;
+    }
+
+    setState(() => _saving = true);
+    final error = await UserService.updateProfile(
+      fullName: nama,
+      email: email,
+      phone: hp,
+    );
+    if (!mounted) return;
+    setState(() => _saving = false);
+
+    if (error != null) {
+      _snack(error);
+      return;
+    }
+
+    // Berhasil -> kembali ke Profil (Profil memuat ulang datanya)
+    Navigator.of(context).pop(true);
   }
 
   // ================= FUNGSI POPUP KONFIRMASI (SESUAI FIGMA 100%) =================
   Future<void> _onBackPressed() async {
+    if (_saving) return;
+
     // Jika tidak ada perubahan, langsung kembali
     if (!_hasChanges) {
       Navigator.of(context).pop();
@@ -107,7 +158,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
       builder: (ctx) => Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        insetPadding: EdgeInsets.zero, 
+        insetPadding: EdgeInsets.zero,
         child: Container(
           width: context.w(350), // Lebar luar sesuai Figma
           padding: EdgeInsets.symmetric(
@@ -133,7 +184,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                 ),
               ),
               SizedBox(height: context.w(11)), // Gap sesuai Figma
-              
+
               // Deskripsi
               Text(
                 'Perubahan yang belum disimpan akan hilang.\nYakin ingin membatalkan?',
@@ -146,7 +197,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                 ),
               ),
               SizedBox(height: context.w(11)), // Gap sesuai Figma
-              
+
               // Tombol Aksi
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -173,7 +224,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                       ),
                     ),
                   ),
-                  
+
                   // Tombol Ya, Batalkan
                   GestureDetector(
                     onTap: () => Navigator.pop(ctx, true),
@@ -284,7 +335,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          'A',
+                          _inisial,
                           style: GoogleFonts.inter(
                             fontSize: context.sp(49),
                             fontWeight: FontWeight.w700,
@@ -296,7 +347,9 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                       SizedBox(width: context.w(25)),
                       Expanded(
                         child: Text(
-                          _namaC.text.isEmpty ? 'Aisyah' : _namaC.text,
+                          _namaC.text.trim().isEmpty
+                              ? widget.namaLengkap
+                              : _namaC.text.trim(),
                           style: GoogleFonts.inter(
                             fontSize: context.sp(24),
                             fontWeight: FontWeight.w700,
@@ -357,7 +410,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
               MediaQuery.of(context).padding.bottom + context.w(24),
             ),
             child: GestureDetector(
-              onTap: _hasChanges ? _simpan : null,
+              onTap: (_hasChanges && !_saving) ? _simpan : null,
               behavior: HitTestBehavior.opaque,
               child: Container(
                 height: context.w(60),
@@ -366,15 +419,24 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                   color: _hasChanges ? primaryOrange : disabledBtn,
                   borderRadius: BorderRadius.circular(context.w(15)),
                 ),
-                child: Text(
-                  'Simpan Perubahan',
-                  style: GoogleFonts.inter(
-                    fontSize: context.sp(20),
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
-                    height: 24 / 20,
-                  ),
-                ),
+                child: _saving
+                    ? SizedBox(
+                        width: context.w(26),
+                        height: context.w(26),
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        'Simpan Perubahan',
+                        style: GoogleFonts.inter(
+                          fontSize: context.sp(20),
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                          height: 24 / 20,
+                        ),
+                      ),
               ),
             ),
           ),

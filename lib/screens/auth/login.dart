@@ -1,13 +1,16 @@
 // lib/screens/auth/login.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart' as gfonts;
 
-import '../home/home_ibu_screen.dart';
+import '../../services/auth_service.dart';
+import 'package:simpasi/main.dart' show markLoginSuccess;
 import 'forgot_pass_screen.dart';
 import 'register.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   final bool showDeletedSuccess;
 
   const LoginScreen({
@@ -16,21 +19,22 @@ class LoginScreen extends StatefulWidget {
   });
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   static const Color primary = Color(0xFFD45060);
-  static const Color accent  = Color(0xFFF1A038);
-  static const Color grey    = Color(0xFF8F8F8F);
+  static const Color accent = Color(0xFFF1A038);
+  static const Color grey = Color(0xFF8F8F8F);
 
   final _emailC = TextEditingController();
-  final _passC  = TextEditingController();
+  final _passC = TextEditingController();
 
   bool _hidePass = true;
-  bool _remember = false;
+  bool _remember = true;
+  bool _isLoading = false;
 
-  // STATE UNTUK ERROR EMAIL (CAUTION) 
+  // STATE UNTUK ERROR EMAIL (CAUTION)
   String? _emailError;
 
   @override
@@ -38,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.initState();
     if (widget.showDeletedSuccess) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showSuccessPopup();
+        if (mounted) _showSuccessPopup();
       });
     }
   }
@@ -100,6 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ================= POPUP KUSTOM LOGIN GAGAL (Figma) =================
   void _showLoginErrorDialog({required String title, required String message}) {
+    if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -129,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
       borderRadius: BorderRadius.circular(10),
       borderSide: const BorderSide(color: Colors.red, width: 1),
     );
-    
+
     return InputDecoration(
       hintText: hint,
       hintStyle: gfonts.GoogleFonts.inter(
@@ -147,45 +152,83 @@ class _LoginScreenState extends State<LoginScreen> {
       focusedBorder: border.copyWith(
         borderSide: const BorderSide(color: primary, width: 1.2),
       ),
-      // Pengaturan border saat error (merah)
       errorBorder: errorBorder,
       focusedErrorBorder: errorBorder,
       suffixIcon: suffix,
-      // Teks error merah di bawah kolom
       errorText: errorText,
       errorStyle: gfonts.GoogleFonts.inter(fontSize: 10, color: Colors.red),
     );
   }
 
-  void _onLogin() {
-    // Reset error terlebih dahulu
+  Future<void> _onLogin() async {
+    if (_isLoading) return;
+
+    final email = _emailC.text.trim();
+    final password = _passC.text;
+
     setState(() {
       _emailError = null;
     });
 
     // 1. Cek jika kolom kosong
-    if (_emailC.text.isEmpty || _passC.text.isEmpty) {
+    if (email.isEmpty || password.isEmpty) {
       _showLoginErrorDialog(
         title: 'Email dan Kata Sandi Kosong',
-        message: 'Silakan isi alamat email dan kata sandi Anda terlebih dahulu sebelum masuk.',
+        message:
+            'Silakan isi alamat email dan kata sandi Anda terlebih dahulu sebelum masuk.',
       );
       return;
     }
 
-    // 2. Cek Format Email (Munculkan Caution Merah) 
-    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_emailC.text.trim())) {
+    // 2. Cek Format Email (Munculkan Caution Merah)
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
       setState(() {
         _emailError = 'Format email tidak valid';
       });
       return;
     }
 
-    // 3. Langsung arahkan ke Home jika kolom terisi dan format email benar
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => const HomeIbuScreen(showLoginSuccess: true),
-      ),
-    );
+    // Tutup fokus input sebelum navigasi
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    // 3. Panggil API login lalu arahkan ke Home
+    setState(() => _isLoading = true);
+    try {
+      // AuthService.login: null = sukses (token sudah disimpan), selain itu pesan error
+      final error = await AuthService.login(
+        email,
+        password,
+        remember: _remember,
+      ).timeout(const Duration(seconds: 15));
+
+      if (!mounted) return;
+
+      if (error != null) {
+        _showLoginErrorDialog(title: 'Gagal Masuk', message: error);
+        return;
+      }
+
+      // Tandai login sukses (mengaktifkan penjaga session & menyiapkan notifikasi), lalu ke Home
+      markLoginSuccess();
+      context.go('/home');
+    } on TimeoutException {
+      if (!mounted) return;
+      _showLoginErrorDialog(
+        title: 'Gagal Masuk',
+        message: 'Koneksi ke server terlalu lama. Silakan coba lagi.',
+      );
+    } catch (e, st) {
+      debugPrint('LOGIN ERROR: $e\n$st');
+      if (!mounted) return;
+      _showLoginErrorDialog(
+        title: 'Gagal Masuk',
+        message: 'Terjadi kesalahan saat masuk. Silakan coba lagi.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _onForgotPassword() {
@@ -204,14 +247,11 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
           Positioned(
@@ -232,13 +272,14 @@ class _LoginScreenState extends State<LoginScreen> {
           SafeArea(
             top: false,
             child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               child: Column(
                 children: [
                   const SizedBox(height: 60),
                   Image.asset(
                     'assets/images/start-melet-buka.png',
                     height: 76,
-                    errorBuilder: (_, __, ___) => const Icon(
+                    errorBuilder: (_, _, _) => const Icon(
                       Icons.child_care,
                       size: 76,
                       color: Colors.white,
@@ -281,15 +322,17 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Text('Alamat Email', style: _label()),
                         ),
                         const SizedBox(height: 12),
-                        
+
                         // KOLOM EMAIL DENGAN VALIDASI CAUTION MERAH
                         TextField(
                           controller: _emailC,
                           keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
                           style: gfonts.GoogleFonts.inter(fontSize: 14),
                           onChanged: (val) {
-                            // Jika user mengubah ketikan dan formatnya sudah benar, hilangkan error
-                            if (_emailError != null && RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(val.trim())) {
+                            if (_emailError != null &&
+                                RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                    .hasMatch(val.trim())) {
                               setState(() => _emailError = null);
                             }
                           },
@@ -298,7 +341,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             errorText: _emailError,
                           ),
                         ),
-                        
+
                         const SizedBox(height: 13),
                         Padding(
                           padding: const EdgeInsets.only(left: 9),
@@ -310,6 +353,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: TextField(
                             controller: _passC,
                             obscureText: _hidePass,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => _onLogin(),
                             style: gfonts.GoogleFonts.inter(fontSize: 14),
                             decoration: _decoration(
                               '••••••••',
@@ -341,7 +386,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   child: Checkbox(
                                     value: _remember,
                                     onChanged: (v) =>
-                                        setState(() => _remember = v ?? false),
+                                        setState(() => _remember = v ?? true),
                                     activeColor: primary,
                                     checkColor: Colors.white,
                                     fillColor: WidgetStateProperty.resolveWith(
@@ -396,7 +441,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 186,
                             height: 48,
                             child: ElevatedButton(
-                              onPressed: _onLogin,
+                              onPressed: _isLoading ? null : _onLogin,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: accent,
                                 elevation: 0,
@@ -405,15 +450,24 @@ class _LoginScreenState extends State<LoginScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              child: Text(
-                                'Masuk',
-                                style: gfonts.GoogleFonts.inter(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                  height: 24 / 20,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Masuk',
+                                      style: gfonts.GoogleFonts.inter(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                        height: 24 / 20,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                             ),
                           ),
                         ),
@@ -469,18 +523,19 @@ class _AutoDismissLoginErrorDialog extends StatefulWidget {
   });
 
   @override
-  State<_AutoDismissLoginErrorDialog> createState() => _AutoDismissLoginErrorDialogState();
+  State<_AutoDismissLoginErrorDialog> createState() =>
+      _AutoDismissLoginErrorDialogState();
 }
 
-class _AutoDismissLoginErrorDialogState extends State<_AutoDismissLoginErrorDialog> {
+class _AutoDismissLoginErrorDialogState
+    extends State<_AutoDismissLoginErrorDialog> {
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    // Timer untuk menutup otomatis setelah 3 detik
     _timer = Timer(const Duration(seconds: 3), () {
-      if (mounted) {
+      if (mounted && Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
     });
@@ -488,7 +543,7 @@ class _AutoDismissLoginErrorDialogState extends State<_AutoDismissLoginErrorDial
 
   @override
   void dispose() {
-    _timer?.cancel(); // Batalkan timer jika popup sudah ditutup manual oleh user
+    _timer?.cancel();
     super.dispose();
   }
 
@@ -510,7 +565,7 @@ class _AutoDismissLoginErrorDialogState extends State<_AutoDismissLoginErrorDial
           children: [
             const Icon(
               Icons.error_outline_rounded,
-              color: Color(0xFFFF0000), // Merah terang dari desain
+              color: Color(0xFFFF0000),
               size: 60,
             ),
             const SizedBox(height: 17),

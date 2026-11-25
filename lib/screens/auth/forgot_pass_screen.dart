@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../services/auth_service.dart'; // sesuaikan nama file kalau berbeda
 import 'otp_verification_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -15,13 +16,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   // Warna dari Figma
   static const Color primary = Color(0xFFD45060);
   static const Color accent = Color(0xFFF1A038);
+  static const Color accentDisabled = Color(0x99F1A038);
   static const Color grey = Color(0xFF8F8F8F);
-  static const Color errorRed = Color(0xFFFF0000); // Tambahan warna merah
+  static const Color errorRed = Color(0xFFFF0000);
 
   final _emailC = TextEditingController();
 
-  // State untuk menandakan apakah error harus ditampilkan
-  bool _showEmailError = false; 
+  // Pesan error di bawah kolom email (null = tidak ada error)
+  String? _emailError;
+
+  // true selama menunggu balasan backend
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -36,7 +41,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         color: Colors.black,
       );
 
-  // Diubah agar bisa menerima status error (border merah)
   InputDecoration _decoration(String hint, {bool isError = false}) {
     final borderColor = isError ? errorRed : grey;
     final focusedColor = isError ? errorRed : primary;
@@ -60,28 +64,64 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
+  // ---------- Validasi ----------
+  // Format email: nama@domain.com (dicek tanpa regex)
+  bool _isValidEmail(String email) {
+    if (email.contains(' ')) return false;
+
+    final parts = email.split('@');
+    if (parts.length != 2) return false; // harus ada tepat satu tanda @
+
+    final name = parts[0];
+    final domain = parts[1];
+
+    if (name.isEmpty) return false;
+    if (!domain.contains('.')) return false;
+    if (domain.startsWith('.') || domain.endsWith('.')) return false;
+
+    return true;
+  }
+
   // ---------- Aksi ----------
-  void _onSendCode() {
-    // Jika kosong, tampilkan error merah dan hentikan proses
-    if (_emailC.text.trim().isEmpty) {
-      setState(() {
-        _showEmailError = true;
-      });
+  Future<void> _onSendCode() async {
+    if (_isLoading) return;
+    FocusScope.of(context).unfocus();
+
+    final email = _emailC.text.trim();
+
+    if (email.isEmpty) {
+      setState(() => _emailError = 'Silakan isi alamat email Anda');
+      return;
+    }
+    if (!_isValidEmail(email)) {
+      setState(() => _emailError = 'Format email tidak valid');
       return;
     }
 
-    // Sembunyikan error jika sudah diisi
     setState(() {
-      _showEmailError = false;
+      _emailError = null;
+      _isLoading = true;
     });
+
+    // Minta backend mengirim kode OTP ke email (null = sukses, selain itu pesan error)
+    final error = await AuthService.forgotPassword(email);
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (error != null) {
+      // email tidak terdaftar, terlalu sering minta kode, atau gagal terhubung ke server
+      setState(() => _emailError = error);
+      return;
+    }
 
     // Pindah ke verifikasi OTP (alur Lupa Kata Sandi)
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => OtpVerificationScreen(
-          email: _emailC.text.trim(),
-          isFromForgotPassword: true, // 👈 INI YANG DITAMBAH
+          email: email,
+          isFromForgotPassword: true,
         ),
       ),
     );
@@ -187,29 +227,30 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           height: 48,
                           child: TextField(
                             controller: _emailC,
+                            enabled: !_isLoading,
                             keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => _onSendCode(),
                             style: GoogleFonts.inter(fontSize: 14),
                             // Sembunyikan error saat user mulai mengetik
                             onChanged: (value) {
-                              if (_showEmailError && value.trim().isNotEmpty) {
-                                setState(() {
-                                  _showEmailError = false;
-                                });
+                              if (_emailError != null) {
+                                setState(() => _emailError = null);
                               }
                             },
                             decoration: _decoration(
                               'nama@gmail.com',
-                              isError: _showEmailError,
+                              isError: _emailError != null,
                             ),
                           ),
                         ),
 
-                        // Teks Peringatan Merah (Muncul jika error)
-                        if (_showEmailError)
+                        // Teks peringatan merah (muncul jika error)
+                        if (_emailError != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 8, left: 8),
                             child: Text(
-                              'Silakan isi alamat email Anda',
+                              _emailError!,
                               style: GoogleFonts.inter(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w400,
@@ -226,23 +267,33 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             width: 245,
                             height: 48,
                             child: ElevatedButton(
-                              onPressed: _onSendCode,
+                              onPressed: _isLoading ? null : _onSendCode,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: accent,
+                                disabledBackgroundColor: accentDisabled,
                                 elevation: 0,
                                 padding: EdgeInsets.zero,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              child: Text(
-                                'Kirim Kode Verifikasi',
-                                style: GoogleFonts.inter(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Kirim Kode Verifikasi',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                             ),
                           ),
                         ),

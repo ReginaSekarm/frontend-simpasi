@@ -1,13 +1,21 @@
 // lib/screens/auth/reset_password_screen.dart
-import 'dart:async'; // Tambahan untuk Timer
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../services/auth_service.dart';
 import '../../widgets/popup_status.dart';
 import 'login.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
-  const ResetPasswordScreen({super.key});
+  final String email;
+  final String otpCode;
+
+  const ResetPasswordScreen({
+    super.key,
+    required this.email,
+    required this.otpCode,
+  });
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -15,8 +23,8 @@ class ResetPasswordScreen extends StatefulWidget {
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   static const Color primary = Color(0xFFD45060);
-  static const Color accent  = Color(0xFFF1A038);
-  static const Color grey    = Color(0xFF8F8F8F);
+  static const Color accent = Color(0xFFF1A038);
+  static const Color grey = Color(0xFF8F8F8F);
   static const Color errorRed = Color(0xFFFF0000);
   static const Color successGreen = Color(0xFF2E7D32);
 
@@ -25,13 +33,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   bool _obscurePass = true;
   bool _obscureConfirm = true;
+  bool _isSubmitting = false;
 
-  // Realtime validation flags
   bool _hasMinLength = false;
   bool _hasUppercase = false;
   bool _hasDigit = false;
 
-  // Error flags (muncul saat tap Simpan)
   bool _showPassError = false;
   bool _showConfirmError = false;
 
@@ -49,7 +56,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       _hasUppercase = RegExp(r'[A-Z]').hasMatch(text);
       _hasDigit = RegExp(r'\d').hasMatch(text);
 
-      // Auto-hide error ketika user mulai valid
       if (_showPassError && _isPasswordValid) {
         _showPassError = false;
       }
@@ -74,42 +80,48 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     super.dispose();
   }
 
-  // ================= POPUP GAGAL =================
-  void _showFailedPopup() {
+  void _showFailedPopup(String? message) {
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (ctx) {
-        return const _AutoDismissFailedResetDialog();
+        return _AutoDismissFailedResetDialog(message: message);
       },
     );
   }
 
-  // ================= SIMPAN =================
-  void _onSimpan() {
-    // Set flag error untuk trigger tampilan merah
+  Future<void> _onSimpan() async {
+    if (_isSubmitting) return;
+
     setState(() {
       _showPassError = _passC.text.isEmpty || !_isPasswordValid;
       _showConfirmError = _confirmC.text.isEmpty || !_isConfirmValid;
     });
 
-    // Kalau ada error → stop, jangan lanjut
     if (_showPassError || _showConfirmError) return;
 
+    FocusScope.of(context).unfocus();
+    setState(() => _isSubmitting = true);
 
-    // TODO: panggil API update password
-    // try {
-    //   await api.updatePassword(_passC.text);
-    //   _showSuccessPopup();
-    // } catch (e) {
-    //   _showFailedPopup(); // Panggil popup gagal ini di dalam catch
-    // }
+    final error = await AuthService.resetPassword(
+      email: widget.email,
+      otpCode: widget.otpCode,
+      newPassword: _passC.text,
+    );
 
-    // Untuk demo (API belum siap) → langsung tampilkan SUCCESS popup:
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+
+    if (error != null) {
+      _showFailedPopup(error);
+      return;
+    }
+
     showStatusPopup(
       context,
       type: PopupType.resetPasswordSuccess,
       onClose: () {
+        if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
           (r) => false,
@@ -125,7 +137,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // ================= BACKGROUND MERAH =================
           Positioned(
             top: 0,
             left: 0,
@@ -141,15 +152,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               ),
             ),
           ),
-
           SafeArea(
             top: false,
             child: SingleChildScrollView(
               child: Column(
                 children: [
                   const SizedBox(height: 60),
-
-                  // ================= MASKOT =================
                   Image.asset(
                     'assets/images/start-melet-buka.png',
                     height: 76,
@@ -160,8 +168,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-
-                  // ================= JUDUL =================
                   Text(
                     'Lupa Kata Sandi?',
                     style: GoogleFonts.inter(
@@ -171,8 +177,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     ),
                   ),
                   const SizedBox(height: 3),
-
-                  // ================= SUBTITLE =================
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 328),
                     child: Text(
@@ -187,8 +191,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     ),
                   ),
                   const SizedBox(height: 25),
-
-                  // ================= CARD FORM =================
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 30),
                     padding: const EdgeInsets.fromLTRB(21, 32, 21, 52),
@@ -200,7 +202,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ============ KATA SANDI BARU ============
                         Padding(
                           padding: const EdgeInsets.only(left: 8),
                           child: Text(
@@ -215,6 +216,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: _passC,
+                          enabled: !_isSubmitting,
                           obscureText: _obscurePass,
                           decoration: InputDecoration(
                             contentPadding: const EdgeInsets.symmetric(
@@ -241,13 +243,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-
-                        // INFO / ERROR TEXT
                         if (_showPassError)
                           Padding(
                             padding: const EdgeInsets.only(left: 8),
                             child: Text(
-                              _passC.text.isEmpty 
+                              _passC.text.isEmpty
                                   ? 'Kata sandi wajib diisi'
                                   : 'Kata sandi belum memenuhi ketentuan',
                               style: GoogleFonts.inter(
@@ -269,10 +269,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                               ),
                             ),
                           ),
-
                         const SizedBox(height: 24),
-
-                        // ============ KONFIRMASI ============
                         Padding(
                           padding: const EdgeInsets.only(left: 8),
                           child: Text(
@@ -287,6 +284,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: _confirmC,
+                          enabled: !_isSubmitting,
                           obscureText: _obscureConfirm,
                           decoration: InputDecoration(
                             contentPadding: const EdgeInsets.symmetric(
@@ -313,7 +311,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                             ),
                           ),
                         ),
-
                         if (_showConfirmError)
                           Padding(
                             padding: const EdgeInsets.only(top: 8, left: 8),
@@ -328,16 +325,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                               ),
                             ),
                           ),
-
                         const SizedBox(height: 40),
-
-                        // ============ TOMBOL SIMPAN ============
                         Center(
                           child: SizedBox(
                             width: 245,
                             height: 48,
                             child: ElevatedButton(
-                              onPressed: _onSimpan,
+                              onPressed: _isSubmitting ? null : _onSimpan,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: accent,
                                 elevation: 0,
@@ -346,14 +340,23 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              child: Text(
-                                'Simpan',
-                                style: GoogleFonts.inter(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              child: _isSubmitting
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Simpan',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                             ),
                           ),
                         ),
@@ -369,28 +372,29 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     );
   }
 
-  // Helper border
   OutlineInputBorder _border(Color color) => OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(color: color, width: 1.2),
       );
 }
 
-// ================= WIDGET POPUP GAGAL (SESUAI FIGMA) =================
 class _AutoDismissFailedResetDialog extends StatefulWidget {
-  const _AutoDismissFailedResetDialog();
+  final String? message;
+
+  const _AutoDismissFailedResetDialog({this.message});
 
   @override
-  State<_AutoDismissFailedResetDialog> createState() => _AutoDismissFailedResetDialogState();
+  State<_AutoDismissFailedResetDialog> createState() =>
+      _AutoDismissFailedResetDialogState();
 }
 
-class _AutoDismissFailedResetDialogState extends State<_AutoDismissFailedResetDialog> {
+class _AutoDismissFailedResetDialogState
+    extends State<_AutoDismissFailedResetDialog> {
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    // Timer untuk menutup otomatis setelah 3 detik
     _timer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.of(context).pop();
@@ -400,7 +404,7 @@ class _AutoDismissFailedResetDialogState extends State<_AutoDismissFailedResetDi
 
   @override
   void dispose() {
-    _timer?.cancel(); // Batalkan timer jika popup sudah ditutup manual oleh user
+    _timer?.cancel();
     super.dispose();
   }
 
@@ -422,8 +426,8 @@ class _AutoDismissFailedResetDialogState extends State<_AutoDismissFailedResetDi
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons.cancel, // Ikon silang bulat
-              color: Color(0xFFD45060), // Warna primary red dari Figma
+              Icons.cancel,
+              color: Color(0xFFD45060),
               size: 70,
             ),
             const SizedBox(height: 20),
@@ -439,7 +443,8 @@ class _AutoDismissFailedResetDialogState extends State<_AutoDismissFailedResetDi
             ),
             const SizedBox(height: 18),
             Text(
-              'Terjadi kendala saat perbarui kata sandi.\nPeriksa koneksi Anda dan coba lagi.',
+              widget.message ??
+                  'Terjadi kendala saat perbarui kata sandi.\nPeriksa koneksi Anda dan coba lagi.',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 14,

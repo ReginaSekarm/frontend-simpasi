@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
 import '../../widgets/recipe_store.dart';
@@ -30,6 +32,18 @@ class GoogleFonts {
   }
 }
 
+class _KoleksiEntry {
+  final int? recipeId;
+  final RecipeItem item;
+  final String caloriesText;
+
+  const _KoleksiEntry({
+    this.recipeId,
+    required this.item,
+    required this.caloriesText,
+  });
+}
+
 class KoleksiScreen extends StatefulWidget {
   const KoleksiScreen({super.key});
 
@@ -48,9 +62,19 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
   static const Color fireOrange  = Color(0xFFFF8F1F);
   static const Color heartRed    = Color(0xFFDD2E44);
 
-  // STATE: kontrol search bar
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  List<_KoleksiEntry> _entries = [];
+  bool _isLoading = true;
+  int? _activeBabyId;
+  String _activeChildName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCollection();
+  }
 
   @override
   void dispose() {
@@ -58,8 +82,282 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
     super.dispose();
   }
 
+  void _snack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
+      );
+  }
+
+  int? _parseId(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is int) return raw;
+    return int.tryParse(raw.toString());
+  }
+
+  Future<int?> _resolveActiveBabyId() async {
+    try {
+      final resBabies = await ApiClient.get('/babies');
+      final rawBabies = resBabies['data'] ?? resBabies['babies'];
+      if (rawBabies is List && rawBabies.isNotEmpty) {
+        final targetName = _activeChildName.trim().toLowerCase();
+        Map<String, dynamic>? selectedMap;
+
+        if (targetName.isNotEmpty) {
+          for (final b in rawBabies) {
+            if (b is! Map) continue;
+            final map = Map<String, dynamic>.from(b);
+            final nama = (map['full_name'] ??
+                    map['fullName'] ??
+                    map['name'] ??
+                    map['nama'] ??
+                    '')
+                .toString()
+                .trim()
+                .toLowerCase();
+            if (nama == targetName) {
+              selectedMap = map;
+              break;
+            }
+          }
+        }
+
+        selectedMap ??= Map<String, dynamic>.from(rawBabies.first as Map);
+        _activeChildName = (selectedMap['full_name'] ??
+                selectedMap['fullName'] ??
+                selectedMap['name'] ??
+                selectedMap['nama'] ??
+                '')
+            .toString()
+            .trim();
+        return _parseId(
+          selectedMap['id'] ??
+              selectedMap['baby_id'] ??
+              selectedMap['babyId'],
+        );
+      }
+    } catch (_) {
+      // Abaikan jika gagal mengambil daftar anak
+    }
+    return null;
+  }
+
+  bool _belongsToActiveChild(
+    Map<String, dynamic> map,
+    int? activeBabyId,
+    String activeChildName,
+  ) {
+    final entryBabyId = _parseId(
+      map['baby_id'] ??
+          map['babyId'] ??
+          (map['baby'] is Map ? (map['baby'] as Map)['id'] : null),
+    );
+    final entryBabyName = (map['baby_name'] ??
+            map['babyName'] ??
+            map['child_name'] ??
+            map['childName'] ??
+            (map['baby'] is Map
+                ? ((map['baby'] as Map)['full_name'] ??
+                    (map['baby'] as Map)['name'])
+                : '') ??
+            '')
+        .toString()
+        .trim()
+        .toLowerCase();
+
+    if (activeBabyId != null) {
+      if (entryBabyId != null) {
+        return entryBabyId == activeBabyId;
+      }
+      if (entryBabyName.isNotEmpty && activeChildName.isNotEmpty) {
+        return entryBabyName == activeChildName.toLowerCase();
+      }
+      return false;
+    }
+
+    if (entryBabyName.isNotEmpty && activeChildName.isNotEmpty) {
+      return entryBabyName == activeChildName.toLowerCase();
+    }
+    return true;
+  }
+
+  Future<void> _loadCollection() async {
+    setState(() => _isLoading = true);
+    try {
+      final activeBabyId = await _resolveActiveBabyId();
+      _activeBabyId = activeBabyId;
+      final activeChildName = _activeChildName.trim();
+
+      final endpoint = activeBabyId != null
+          ? '/collection?babyId=$activeBabyId'
+          : '/collection';
+      final res = await ApiClient.get(endpoint);
+      final rawData = res['data'];
+      final List<_KoleksiEntry> loaded = [];
+      final Set<String> syncedTitles = {};
+
+      if (rawData is List) {
+        for (final entry in rawData) {
+          if (entry is! Map) continue;
+          final map = Map<String, dynamic>.from(entry);
+          if (!_belongsToActiveChild(map, activeBabyId, activeChildName)) {
+            continue;
+          }
+
+          final nestedRecipe = map['recipe'] is Map
+              ? Map<String, dynamic>.from(map['recipe'] as Map)
+              : (map['Recipe'] is Map
+                  ? Map<String, dynamic>.from(map['Recipe'] as Map)
+                  : <String, dynamic>{});
+
+          final recipeId = _parseId(
+            map['recipe_id'] ??
+                map['recipeId'] ??
+                nestedRecipe['id'] ??
+                nestedRecipe['recipe_id'] ??
+                map['id'],
+          );
+
+          final title = (nestedRecipe['title'] ??
+                  nestedRecipe['name'] ??
+                  map['title'] ??
+                  map['name'] ??
+                  'Resep MPASI')
+              .toString()
+              .trim();
+
+          final imagePath = (nestedRecipe['image_url'] ??
+                  nestedRecipe['imageUrl'] ??
+                  nestedRecipe['imagePath'] ??
+                  nestedRecipe['photo_url'] ??
+                  map['image_url'] ??
+                  map['imagePath'] ??
+                  'assets/images/bubur-hati-ayam.png')
+              .toString()
+              .trim();
+
+          final rawAge = (nestedRecipe['age_category'] ??
+                  nestedRecipe['ageCategory'] ??
+                  nestedRecipe['badge'] ??
+                  map['age_category'] ??
+                  map['badge'] ??
+                  'MPASI')
+              .toString()
+              .trim();
+
+          final badge = rawAge.toLowerCase().contains('bulan')
+              ? rawAge
+              : '$rawAge Bulan';
+
+          final rawKal = nestedRecipe['calories'] ??
+              nestedRecipe['kalori'] ??
+              map['calories'] ??
+              map['kalori'];
+          String caloriesText = '320 kkal';
+          if (rawKal != null && rawKal.toString().trim().isNotEmpty) {
+            final kalStr = rawKal.toString().trim();
+            caloriesText =
+                kalStr.toLowerCase().contains('kkal') ? kalStr : '$kalStr kkal';
+          }
+
+          syncedTitles.add(title);
+          loaded.add(
+            _KoleksiEntry(
+              recipeId: recipeId,
+              item: RecipeItem(
+                title: title,
+                imagePath: imagePath.isEmpty
+                    ? 'assets/images/bubur-hati-ayam.png'
+                    : imagePath,
+                badge: badge,
+              ),
+              caloriesText: caloriesText,
+            ),
+          );
+        }
+      }
+
+      RecipeStore.favorites.value = syncedTitles;
+
+      if (!mounted) return;
+      setState(() {
+        _entries = loaded;
+        _isLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _snack(e.message.isNotEmpty ? e.message : 'Gagal memuat koleksi resep');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _snack('Terjadi kesalahan saat memuat koleksi resep');
+    }
+  }
+
+  Future<void> _removeFromCollection(_KoleksiEntry entry) async {
+    final recipeId = entry.recipeId;
+
+    setState(() {
+      _entries.removeWhere((e) =>
+          (recipeId != null && e.recipeId == recipeId) ||
+          e.item.title == entry.item.title);
+    });
+    final updatedFavs = Set<String>.from(RecipeStore.favorites.value)
+      ..remove(entry.item.title);
+    RecipeStore.favorites.value = updatedFavs;
+
+    if (recipeId == null) return;
+
+    try {
+      final endpoint = _activeBabyId != null
+          ? '/collection/$recipeId?babyId=$_activeBabyId'
+          : '/collection/$recipeId';
+      await ApiClient.delete(endpoint);
+      _snack('Dihapus dari koleksi');
+    } on ApiException catch (e) {
+      _snack(e.message.isNotEmpty ? e.message : 'Gagal menghapus dari koleksi');
+      await _loadCollection();
+    }
+  }
+
+  Widget _buildRecipeImage(String path) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return Image.network(
+        path,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          color: textGrey,
+          child: const Icon(Icons.fastfood, color: Colors.white),
+        ),
+      );
+    }
+
+    return Image.asset(
+      path,
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        color: textGrey,
+        child: const Icon(Icons.fastfood, color: Colors.white),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final query = _searchQuery.trim().toLowerCase();
+    final filteredEntries = query.isEmpty
+        ? _entries
+        : _entries
+            .where((e) => e.item.title.toLowerCase().contains(query))
+            .toList();
+
     return Scaffold(
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: false,
@@ -70,52 +368,61 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
               children: [
                 _buildHeader(context),
                 Expanded(
-                  child: ValueListenableBuilder<Set<String>>(
-                    valueListenable: RecipeStore.favorites,
-                    builder: (_, favs, __) {
-                      final allFavorites = RecipeStore.all
-                          .where((r) => favs.contains(r.title))
-                          .toList();
-
-                      final query = _searchQuery.trim().toLowerCase();
-                      final items = query.isEmpty
-                          ? allFavorites
-                          : allFavorites
-                              .where((r) =>
-                                  r.title.toLowerCase().contains(query))
-                              .toList();
-
-                      if (allFavorites.isEmpty) {
-                        return _buildEmptyState(context);
-                      }
-                      if (items.isEmpty) {
-                        return _buildNoResultsState(context);
-                      }
-
-                      return GridView.builder(
-                        padding: EdgeInsets.fromLTRB(
-                          context.w(39),
-                          context.w(24),
-                          context.w(39),
-                          context.w(140),
+                  child: _isLoading && _entries.isEmpty
+                      ? const Center(
+                          child: CircularProgressIndicator(color: primaryRed),
+                        )
+                      : RefreshIndicator(
+                          color: primaryRed,
+                          onRefresh: _loadCollection,
+                          child: _entries.isEmpty
+                              ? SingleChildScrollView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  child: SizedBox(
+                                    height:
+                                        MediaQuery.of(context).size.height * 0.65,
+                                    child: _buildEmptyState(context),
+                                  ),
+                                )
+                              : filteredEntries.isEmpty
+                                  ? SingleChildScrollView(
+                                      physics:
+                                          const AlwaysScrollableScrollPhysics(),
+                                      child: SizedBox(
+                                        height:
+                                            MediaQuery.of(context).size.height *
+                                                0.65,
+                                        child: _buildNoResultsState(context),
+                                      ),
+                                    )
+                                  : GridView.builder(
+                                      physics:
+                                          const AlwaysScrollableScrollPhysics(),
+                                      padding: EdgeInsets.fromLTRB(
+                                        context.w(39),
+                                        context.w(24),
+                                        context.w(39),
+                                        context.w(140),
+                                      ),
+                                      gridDelegate:
+                                          SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        mainAxisSpacing: context.w(33),
+                                        crossAxisSpacing: context.w(24),
+                                        childAspectRatio: 144 / 186,
+                                      ),
+                                      itemCount: filteredEntries.length,
+                                      itemBuilder: (_, i) => _buildCard(
+                                        context,
+                                        filteredEntries[i],
+                                      ),
+                                    ),
                         ),
-                        gridDelegate:
-                            SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: context.w(33),
-                          crossAxisSpacing: context.w(24),
-                          childAspectRatio: 144 / 186,
-                        ),
-                        itemCount: items.length,
-                        itemBuilder: (_, i) => _buildCard(context, items[i]),
-                      );
-                    },
-                  ),
                 ),
               ],
             ),
 
-            // ================= BOTTOM NAV =================
             BottomNav(
               currentIndex: 0,
               onTap: (i) {
@@ -145,7 +452,6 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
     );
   }
 
-    // ================= EMPTY STATE (Belum Ada Koleksi) =================
   Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
@@ -224,7 +530,6 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
     );
   }
 
-  // ================= NO RESULTS STATE =================
   Widget _buildNoResultsState(BuildContext context) {
     return Center(
       child: Column(
@@ -274,7 +579,6 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
     );
   }
 
-  // ================= HEADER =================
   Widget _buildHeader(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
 
@@ -342,8 +646,8 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                       onChanged: (value) {
                         setState(() => _searchQuery = value);
                       },
-                      onTapOutside: (event) {
-                      FocusScope.of(context).unfocus();
+                      onTapOutside: (_) {
+                        FocusScope.of(context).unfocus();
                       },
                       style: GoogleFonts.inter(
                         fontSize: context.sp(12),
@@ -397,12 +701,13 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
     );
   }
 
-  // ================= KARTU RESEP =================
-    Widget _buildCard(BuildContext context, RecipeItem item) {
+  Widget _buildCard(BuildContext context, _KoleksiEntry entry) {
+    final item = entry.item;
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () {
-        Navigator.of(context).push(
+      onTap: () async {
+        await Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => DetailResepScreen(
               title: item.title,
@@ -411,132 +716,126 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
             ),
           ),
         );
+        if (mounted) {
+          _loadCollection();
+        }
       },
       child: Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: textGrey, width: context.w(1)),
-        borderRadius: BorderRadius.circular(context.w(10)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              context.w(9.5),
-              context.w(14),
-              context.w(9.5),
-              0,
-            ),
-            child: AspectRatio(
-              aspectRatio: 125 / 123,
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(context.w(10)),
-                    child: Image.asset(
-                      item.imagePath,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: textGrey,
-                        child: const Icon(Icons.fastfood, color: Colors.white),
-                      ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: textGrey, width: context.w(1)),
+          borderRadius: BorderRadius.circular(context.w(10)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                context.w(9.5),
+                context.w(14),
+                context.w(9.5),
+                0,
+              ),
+              child: AspectRatio(
+                aspectRatio: 125 / 123,
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(context.w(10)),
+                      child: _buildRecipeImage(item.imagePath),
                     ),
-                  ),
-                  Positioned(
-                    top: context.w(7),
-                    left: context.w(6),
-                    child: Container(
-                      height: context.w(16),
-                      padding: EdgeInsets.symmetric(horizontal: context.w(8)),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: badgeYellow,
-                        borderRadius: BorderRadius.circular(context.w(9)),
-                      ),
-                      child: Text(
-                        item.badge,
-                        style: GoogleFonts.inter(
-                          fontSize: context.sp(10),
-                          fontWeight: FontWeight.w400,
-                          color: Colors.white,
-                          height: 12 / 10,
+                    Positioned(
+                      top: context.w(7),
+                      left: context.w(6),
+                      child: Container(
+                        height: context.w(16),
+                        padding: EdgeInsets.symmetric(horizontal: context.w(8)),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: badgeYellow,
+                          borderRadius: BorderRadius.circular(context.w(9)),
+                        ),
+                        child: Text(
+                          item.badge,
+                          style: GoogleFonts.inter(
+                            fontSize: context.sp(10),
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white,
+                            height: 12 / 10,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    top: context.w(6),
-                    right: context.w(10),
-                    child: GestureDetector(
-                      onTap: () => RecipeStore.toggle(item.title),
-                      behavior: HitTestBehavior.opaque,
-                      child: Icon(
-                        Icons.favorite,
-                        color: heartRed,
-                        size: context.w(20),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              context.w(13),
-              context.w(8),
-              context.w(9),
-              context.w(6),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: GoogleFonts.inter(
-                    fontSize: context.sp(10),
-                    fontWeight: FontWeight.w400,
-                    color: textBlack,
-                    height: 12 / 10,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: context.w(8)),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    SvgPicture.asset(
-                      'assets/images/fire.svg',
-                      width: context.w(12),
-                      height: context.w(12),
-                      fit: BoxFit.contain,
-                      colorFilter: const ColorFilter.mode(
-                        fireOrange,
-                        BlendMode.srcIn,
-                      ),
-                    ),
-                    SizedBox(width: context.w(2)),
-                    Text(
-                      '320 kkal',
-                      style: GoogleFonts.inter(
-                        fontSize: context.sp(10),
-                        fontWeight: FontWeight.w400,
-                        color: textBlack,
-                        height: 12 / 10,
+                    Positioned(
+                      top: context.w(6),
+                      right: context.w(10),
+                      child: GestureDetector(
+                        onTap: () => _removeFromCollection(entry),
+                        behavior: HitTestBehavior.opaque,
+                        child: Icon(
+                          Icons.favorite,
+                          color: heartRed,
+                          size: context.w(20),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
-               ],
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                context.w(13),
+                context.w(8),
+                context.w(9),
+                context.w(6),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: GoogleFonts.inter(
+                      fontSize: context.sp(10),
+                      fontWeight: FontWeight.w400,
+                      color: textBlack,
+                      height: 12 / 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: context.w(8)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      SvgPicture.asset(
+                        'assets/images/fire.svg',
+                        width: context.w(12),
+                        height: context.w(12),
+                        fit: BoxFit.contain,
+                        colorFilter: const ColorFilter.mode(
+                          fireOrange,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                      SizedBox(width: context.w(2)),
+                      Text(
+                        entry.caloriesText,
+                        style: GoogleFonts.inter(
+                          fontSize: context.sp(10),
+                          fontWeight: FontWeight.w400,
+                          color: textBlack,
+                          height: 12 / 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 }

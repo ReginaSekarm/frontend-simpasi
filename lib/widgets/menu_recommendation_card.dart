@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../core/app_text.dart';
+import '../core/network/api_client.dart';
+import '../core/network/api_exception.dart';
 import '../screens/menu/detail_resep_screen.dart';
 import '../utils/responsive.dart';
 import 'recipe_store.dart';
 
 class MenuRecommendationCard extends StatelessWidget {
+  final int? recipeId;
   final String title;
   final String imagePath;
   final String badge;
+  final String caloriesText;
 
   /// Kalau kosong, kartu langsung membuka halaman detail resep.
   final VoidCallback? onTap;
@@ -20,9 +24,11 @@ class MenuRecommendationCard extends StatelessWidget {
 
   const MenuRecommendationCard({
     super.key,
+    this.recipeId,
     required this.title,
     required this.imagePath,
     required this.badge,
+    this.caloriesText = '320 kkal',
     this.onTap,
     this.hasBorder = true,
     this.isNew = false,
@@ -45,6 +51,52 @@ class MenuRecommendationCard extends StatelessWidget {
         badge: badge,
       ),
     ));
+  }
+
+  Future<void> _toggleFavorite(BuildContext context) async {
+    final currentFavs = Set<String>.from(RecipeStore.favorites.value);
+    final currentlyLiked = currentFavs.contains(title);
+    final nextLiked = !currentlyLiked;
+
+    if (nextLiked) {
+      currentFavs.add(title);
+    } else {
+      currentFavs.remove(title);
+    }
+    RecipeStore.favorites.value = currentFavs;
+
+    if (recipeId == null) return;
+
+    try {
+      if (nextLiked) {
+        await ApiClient.post('/collection', data: {'recipeId': recipeId});
+      } else {
+        await ApiClient.delete('/collection/$recipeId');
+      }
+    } on ApiException catch (e) {
+      final reverted = Set<String>.from(RecipeStore.favorites.value);
+      if (currentlyLiked) {
+        reverted.add(title);
+      } else {
+        reverted.remove(title);
+      }
+      RecipeStore.favorites.value = reverted;
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                e.message.isNotEmpty
+                    ? e.message
+                    : 'Gagal memperbarui koleksi resep',
+              ),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+      }
+    }
   }
 
   @override
@@ -119,21 +171,40 @@ class MenuRecommendationCard extends StatelessWidget {
     );
   }
 
-  Widget _image(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(context.w(10)),
-        child: Image.asset(
-          imagePath,
-          width: context.w(125),
-          height: context.w(123),
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => Container(
-            width: context.w(125),
-            height: context.w(123),
-            color: _textGrey,
-            child: const Icon(Icons.fastfood, color: Colors.white),
-          ),
-        ),
-      );
+  Widget _image(BuildContext context) {
+    final cleanPath = imagePath.trim();
+    final isNetwork =
+        cleanPath.startsWith('http://') || cleanPath.startsWith('https://');
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(context.w(10)),
+      child: isNetwork
+          ? Image.network(
+              cleanPath,
+              width: context.w(125),
+              height: context.w(123),
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(
+                width: context.w(125),
+                height: context.w(123),
+                color: _textGrey,
+                child: const Icon(Icons.fastfood, color: Colors.white),
+              ),
+            )
+          : Image.asset(
+              cleanPath,
+              width: context.w(125),
+              height: context.w(123),
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(
+                width: context.w(125),
+                height: context.w(123),
+                color: _textGrey,
+                child: const Icon(Icons.fastfood, color: Colors.white),
+              ),
+            ),
+    );
+  }
 
   // Badge usia: dibatasi lebarnya, teks mengecil kalau sempit
   Widget _badge(BuildContext context) => Container(
@@ -161,7 +232,7 @@ class MenuRecommendationCard extends StatelessWidget {
         builder: (_, favs, _) {
           final liked = favs.contains(title);
           return GestureDetector(
-            onTap: () => RecipeStore.toggle(title),
+            onTap: () => _toggleFavorite(context),
             behavior: HitTestBehavior.opaque,
             child: Padding(
               // area sentuh lebih besar dari ikonnya
@@ -176,7 +247,6 @@ class MenuRecommendationCard extends StatelessWidget {
         },
       );
 
-  
   Widget _kalori(BuildContext context) => Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
@@ -189,7 +259,7 @@ class MenuRecommendationCard extends StatelessWidget {
           SizedBox(width: context.w(2)),
           Flexible(
             child: Text(
-              '320 kkal',
+              caloriesText,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.txt(10, h: 12 / 10),

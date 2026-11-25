@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../services/user_service.dart';
+
 class GoogleFonts {
   static TextStyle inter({
     double? fontSize,
@@ -39,6 +41,7 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
   bool _hideOld = true;
   bool _hideNew = true;
   bool _hideConfirm = true;
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -48,34 +51,63 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
     super.dispose();
   }
 
-  void _simpan() {
-    final oldP = _oldPassC.text.trim();
-    final newP = _newPassC.text.trim();
-    final conf = _confirmPassC.text.trim();
+  // ================= SIMPAN KE BACKEND =================
+  Future<void> _simpan() async {
+    if (_saving) return;
 
-    // Validasi dasar
+    // Kata sandi tidak di-trim: harus persis sama dengan yang diketik saat login
+    final oldP = _oldPassC.text;
+    final newP = _newPassC.text;
+    final conf = _confirmPassC.text;
+
+    // Validasi (aturan sama dengan backend: min 8 karakter, 1 huruf besar, 1 angka)
     if (oldP.isEmpty || newP.isEmpty || conf.isEmpty) {
       _snack('Semua kolom wajib diisi');
       return;
     }
-    if (newP.length < 6) {
-      _snack('Kata sandi baru minimal 6 karakter');
+    if (newP.length < 8) {
+      _snack('Kata sandi baru minimal 8 karakter');
+      return;
+    }
+    if (!RegExp(r'[A-Z]').hasMatch(newP)) {
+      _snack('Kata sandi baru harus mengandung huruf besar');
+      return;
+    }
+    if (!RegExp(r'\d').hasMatch(newP)) {
+      _snack('Kata sandi baru harus mengandung angka');
       return;
     }
     if (newP != conf) {
       _snack('Konfirmasi kata sandi tidak cocok');
       return;
     }
+    if (newP == oldP) {
+      _snack('Kata sandi baru tidak boleh sama dengan kata sandi lama');
+      return;
+    }
 
-    // TODO: kirim ke backend
+    setState(() => _saving = true);
+    final error = await UserService.changePassword(
+      oldPassword: oldP,
+      newPassword: newP,
+      confirmPassword: conf,
+    );
+    if (!mounted) return;
+    setState(() => _saving = false);
+
+    if (error != null) {
+      _snack(error);
+      return;
+    }
+
     _snack('Kata sandi berhasil diubah');
     Navigator.of(context).pop();
   }
 
   void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -175,24 +207,35 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
 
                   // ---- Tombol Simpan ----
                   GestureDetector(
-                    onTap: _simpan,
+                    onTap: _saving ? null : _simpan,
                     behavior: HitTestBehavior.opaque,
                     child: Container(
                       height: 60,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: primaryOrange,
+                        color: _saving
+                            ? primaryOrange.withValues(alpha: 0.6)
+                            : primaryOrange,
                         borderRadius: BorderRadius.circular(15),
                       ),
-                      child: Text(
-                        'Simpan Kata Sandi',
-                        style: GoogleFonts.inter(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
-                          height: 24 / 20,
-                        ),
-                      ),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 26,
+                              height: 26,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              'Simpan Kata Sandi',
+                              style: GoogleFonts.inter(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                                height: 24 / 20,
+                              ),
+                            ),
                     ),
                   ),
 
@@ -248,7 +291,7 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
                 color: textBlack,
                 height: 19 / 16,
               ),
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,

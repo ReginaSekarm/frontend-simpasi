@@ -1,14 +1,16 @@
 // lib/screens/auth/otp_verification_screen.dart
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart' as google_fonts;
+import 'package:http/http.dart' as http;
 
+import '../../services/auth_service.dart';
 import '../../widgets/popup_status.dart';
 import 'login.dart';
-
+import 'register.dart';
 import 'reset_password_screen.dart';
-import 'register.dart'; 
 
 class OtpVerificationScreen extends StatefulWidget {
   final String email;
@@ -25,12 +27,14 @@ class OtpVerificationScreen extends StatefulWidget {
 }
 
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
-  // Warna dari Figma
   static const Color primary = Color(0xFFD45060);
   static const Color accent = Color(0xFFF1A038);
   static const Color grey = Color(0xFF8F8F8F);
   static const Color subGrey = Color(0xFF797777);
-  static const Color errorRed = Color(0xFFFF0000); 
+  static const Color errorRed = Color(0xFFFF0000);
+
+  // Ganti ke http://10.0.2.2:5000/api jika menjalankan di Android Emulator
+  static const String _baseUrl = 'http://localhost:5000/api';
 
   final List<TextEditingController> _otpControllers =
       List.generate(4, (_) => TextEditingController());
@@ -38,11 +42,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   int _secondsRemaining = 60;
   Timer? _timer;
-  
-  bool _isError = false; 
+  bool _isVerifying = false;
 
-  // GETTER UNTUK CEK APAKAH SEMUA KOLOM OTP SUDAH TERISI
-  bool get _isOtpComplete => _otpControllers.every((c) => c.text.isNotEmpty);
+  bool _isError = false;
+  String _errorMessage =
+      'Kode yang Anda masukkan tidak cocok. Periksa lagi lalu masukkan ulang.';
+
+  bool get _isOtpComplete =>
+      !_isVerifying && _otpControllers.every((c) => c.text.isNotEmpty);
 
   @override
   void initState() {
@@ -80,7 +87,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     super.dispose();
   }
 
-  // ================= POPUP GAGAL KIRIM KODE =================
   void _showFailedSendCodePopup() {
     showDialog(
       context: context,
@@ -91,37 +97,27 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     );
   }
 
-  // ================= VERIFIKASI =================
-  void _onVerify() {
-    final code = _otpControllers.map((c) => c.text).join();
-
-    // Validasi panjang kode (jika karena suatu hal lolos dari tombol disabled)
-    if (code.length < 4) {
-      setState(() => _isError = true);
-      return;
-    }
-
-    setState(() => _isError = false);
-
-    // Tampilkan Popup Sukses Kustom
+  void _openSuccessAndNavigate(String code) {
     showDialog(
       context: context,
-      barrierDismissible: false, // User menunggu popup hilang sendiri
+      barrierDismissible: false,
       builder: (ctx) {
         return _SuccessVerificationDialog(
           onDismiss: () {
+            if (!mounted) return;
             if (widget.isFromForgotPassword) {
-              // Jika dari Lupa Sandi -> Ke Reset Password
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const ResetPasswordScreen(),
+                  builder: (_) => ResetPasswordScreen(
+                    email: widget.email.trim(),
+                    otpCode: code,
+                  ),
                 ),
               );
             } else {
-              // Jika dari Register -> Ke Login
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()), 
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
                 (r) => false,
               );
             }
@@ -131,25 +127,104 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     );
   }
 
-  // ================= KIRIM ULANG KODE =================
-  void _resendCode() {
-    if (_secondsRemaining == 0) {
+  Future<void> _onVerify() async {
+    if (_isVerifying) return;
+
+    final code = _otpControllers.map((c) => c.text).join().trim();
+    final cleanEmail = widget.email.trim();
+
+    if (code.length < 4) {
+      setState(() {
+        _isError = true;
+        _errorMessage =
+            'Kode yang Anda masukkan tidak cocok. Periksa lagi lalu masukkan ulang.';
+      });
+      return;
+    }
+
+    // Untuk alur lupa kata sandi, kode OTP divalidasi saat submit reset password
+    if (widget.isFromForgotPassword) {
+      setState(() => _isError = false);
+      _openSuccessAndNavigate(code);
+      return;
+    }
+
+    setState(() {
+      _isVerifying = true;
+      _isError = false;
+    });
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/auth/verify-otp'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': cleanEmail,
+              'otpCode': code,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (!mounted) return;
+
+      Map<String, dynamic> body = {};
+      if (response.body.isNotEmpty) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          body = decoded;
+        }
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _openSuccessAndNavigate(code);
+        return;
+      }
+
+      setState(() {
+        _isError = true;
+        _errorMessage = (body['message'] as String?) ??
+            'Kode yang Anda masukkan tidak cocok. Periksa lagi lalu masukkan ulang.';
+      });
+    } on TimeoutException {
+      if (!mounted) return;
+      setState(() {
+        _isError = true;
+        _errorMessage =
+            'Permintaan ke server memakan waktu terlalu lama. Coba lagi.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isError = true;
+        _errorMessage =
+            'Gagal terhubung ke server. Pastikan backend sedang berjalan.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isVerifying = false);
+      }
+    }
+  }
+
+  Future<void> _resendCode() async {
+    if (_secondsRemaining == 0 && !_isVerifying) {
+      final error = await AuthService.resendOtp(
+        widget.email.trim(),
+        purpose: widget.isFromForgotPassword ? 'reset_password' : 'register',
+      );
+
+      if (!mounted) return;
+      if (error != null) {
+        _showFailedSendCodePopup();
+        return;
+      }
+
       _startTimer();
-
-      // TODO: Nanti saat API sudah siap, panggil API di sini dan gunakan try-catch seperti ini:
-      // try {
-      //   await api.resendOtp(widget.email); 
-      //   showStatusPopup(context, type: PopupType.otpResendSuccess);
-      // } catch (e) {
-      //   _showFailedSendCodePopup(); // Panggil popup gagal jika API error
-      // }
-
-      // Untuk saat ini (karena API belum terhubung), kita tampilkan popup sukses
       showStatusPopup(context, type: PopupType.otpResendSuccess);
     }
   }
 
-  // ================= OTP BOX =================
   Widget _buildOtpBox(int index) {
     return SizedBox(
       width: 58,
@@ -159,7 +234,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(
-            color: _isError ? errorRed : grey, 
+            color: _isError ? errorRed : grey,
             width: 1,
           ),
           borderRadius: BorderRadius.circular(10),
@@ -167,6 +242,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         child: TextField(
           controller: _otpControllers[index],
           focusNode: _focusNodes[index],
+          enabled: !_isVerifying,
           textAlign: TextAlign.center,
           keyboardType: TextInputType.number,
           inputFormatters: [
@@ -184,9 +260,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           ),
           onChanged: (value) {
             if (_isError) setState(() => _isError = false);
-            
-            // setState DITAMBAHKAN AGAR TOMBOL BISA BERUBAH WARNA SECARA REAL-TIME
-            setState(() {}); 
+            setState(() {});
 
             if (value.isNotEmpty && index < 3) {
               _focusNodes[index + 1].requestFocus();
@@ -206,7 +280,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // ================= BACKGROUND MERAH =================
           Positioned(
             top: 0,
             left: 0,
@@ -222,15 +295,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               ),
             ),
           ),
-
           SafeArea(
             top: false,
             child: SingleChildScrollView(
               child: Column(
                 children: [
                   const SizedBox(height: 60),
-
-                  // ================= MASKOT =================
                   Image.asset(
                     'assets/images/start-melet-buka.png',
                     height: 76,
@@ -241,8 +311,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-
-                  // ================= JUDUL =================
                   Text(
                     widget.isFromForgotPassword
                         ? 'Verifikasi Kode'
@@ -254,8 +322,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ),
                   ),
                   const SizedBox(height: 3),
-
-                  // ================= SUBTITLE =================
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 328),
                     child: Text(
@@ -270,8 +336,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ),
                   ),
                   const SizedBox(height: 25),
-
-                  // ================= CARD FORM =================
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 30),
                     padding: const EdgeInsets.fromLTRB(21, 32, 21, 52),
@@ -295,7 +359,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           ),
                         ),
                         const SizedBox(height: 18),
-
                         Padding(
                           padding: const EdgeInsets.only(left: 8),
                           child: Text(
@@ -310,8 +373,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-
-                        // ================= 4 KOLOM OTP =================
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -320,12 +381,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             ],
                           ],
                         ),
-                        
-                        // ================= TEKS ERROR =================
                         if (_isError) ...[
                           const SizedBox(height: 7),
                           Text(
-                            'Kode yang Anda masukkan tidak cocok. Periksa lagi lalu masukkan ulang.',
+                            _errorMessage,
                             style: google_fonts.GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.w400,
@@ -334,10 +393,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             ),
                           ),
                         ],
-                        
                         const SizedBox(height: 29),
-
-                        // ================= KIRIM ULANG KODE =================
                         Center(
                           child: GestureDetector(
                             onTap: _resendCode,
@@ -352,8 +408,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-
-                        // ================= TIMER =================
                         Center(
                           child: Text.rich(
                             TextSpan(
@@ -377,32 +431,39 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           ),
                         ),
                         const SizedBox(height: 41),
-
-                        // ================= TOMBOL VERIFIKASI =================
                         Center(
                           child: SizedBox(
                             width: 186,
                             height: 48,
                             child: ElevatedButton(
-                              // LOGIKA TOMBOL DISABLED / ENABLED
                               onPressed: _isOtpComplete ? _onVerify : null,
                               style: ElevatedButton.styleFrom(
-                                // Warna abu-abu jika belum lengkap, warna accent jika sudah
-                                backgroundColor: _isOtpComplete ? accent : const Color(0xFFD9D9D9),
+                                backgroundColor: _isOtpComplete
+                                    ? accent
+                                    : const Color(0xFFD9D9D9),
                                 elevation: 0,
                                 padding: EdgeInsets.zero,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              child: Text(
-                                'Verifikasi',
-                                style: google_fonts.GoogleFonts.inter(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              child: _isVerifying
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.4,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Verifikasi',
+                                      style: google_fonts.GoogleFonts.inter(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                             ),
                           ),
                         ),
@@ -410,8 +471,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-
-                  // ================= TEKS BAWAH (DINAMIS) =================
                   Container(
                     width: double.infinity,
                     margin: const EdgeInsets.symmetric(horizontal: 30),
@@ -422,7 +481,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         if (Navigator.of(context).canPop()) {
                           Navigator.of(context).pop();
                         } else {
-                          // Jika stack kosong, paksa kembali ke Register
                           Navigator.of(context).pushReplacement(
                             MaterialPageRoute(
                               builder: (_) => const RegisterScreen(),
@@ -453,27 +511,27 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 }
 
-// ================= WIDGET POPUP SUKSES KUSTOM (AUTO-DIRECT) =================
 class _SuccessVerificationDialog extends StatefulWidget {
   final VoidCallback onDismiss;
 
   const _SuccessVerificationDialog({required this.onDismiss});
 
   @override
-  State<_SuccessVerificationDialog> createState() => _SuccessVerificationDialogState();
+  State<_SuccessVerificationDialog> createState() =>
+      _SuccessVerificationDialogState();
 }
 
-class _SuccessVerificationDialogState extends State<_SuccessVerificationDialog> {
+class _SuccessVerificationDialogState
+    extends State<_SuccessVerificationDialog> {
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    // Timer 2 detik untuk menutup otomatis lalu menjalankan onDismiss (Direct ke halaman berikutnya)
     _timer = Timer(const Duration(seconds: 2), () {
       if (mounted) {
-        Navigator.of(context).pop(); // Tutup popup
-        widget.onDismiss(); // Jalankan perpindahan halaman
+        Navigator.of(context).pop();
+        widget.onDismiss();
       }
     });
   }
@@ -501,8 +559,8 @@ class _SuccessVerificationDialogState extends State<_SuccessVerificationDialog> 
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons.email_outlined, // Ikon surat (outline)
-              color: Color(0xFF76C457), // Warna hijau sesuai Figma
+              Icons.email_outlined,
+              color: Color(0xFF76C457),
               size: 70,
             ),
             const SizedBox(height: 12),
@@ -534,21 +592,21 @@ class _SuccessVerificationDialogState extends State<_SuccessVerificationDialog> 
   }
 }
 
-// ================= WIDGET POPUP GAGAL KIRIM KODE (SESUAI FIGMA) =================
 class _AutoDismissFailedSendCodeDialog extends StatefulWidget {
   const _AutoDismissFailedSendCodeDialog();
 
   @override
-  State<_AutoDismissFailedSendCodeDialog> createState() => _AutoDismissFailedSendCodeDialogState();
+  State<_AutoDismissFailedSendCodeDialog> createState() =>
+      _AutoDismissFailedSendCodeDialogState();
 }
 
-class _AutoDismissFailedSendCodeDialogState extends State<_AutoDismissFailedSendCodeDialog> {
+class _AutoDismissFailedSendCodeDialogState
+    extends State<_AutoDismissFailedSendCodeDialog> {
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    // Timer untuk menutup otomatis setelah 3 detik
     _timer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.of(context).pop();
@@ -558,7 +616,7 @@ class _AutoDismissFailedSendCodeDialogState extends State<_AutoDismissFailedSend
 
   @override
   void dispose() {
-    _timer?.cancel(); // Batalkan timer jika popup sudah ditutup manual oleh user
+    _timer?.cancel();
     super.dispose();
   }
 
@@ -580,8 +638,8 @@ class _AutoDismissFailedSendCodeDialogState extends State<_AutoDismissFailedSend
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              Icons.cancel, // Ikon silang bulat
-              color: Color(0xFFD45060), // Warna primary red dari Figma
+              Icons.cancel,
+              color: Color(0xFFD45060),
               size: 70,
             ),
             const SizedBox(height: 20),

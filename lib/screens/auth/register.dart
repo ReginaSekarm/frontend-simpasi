@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 
 import 'otp_verification_screen.dart';
 import 'login.dart'; // Pastikan import ini sesuai dengan nama file Anda
@@ -20,6 +22,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   static const Color grey = Color(0xFF8F8F8F);
   static const Color successGreen = Color(0xFF2E7D32);
 
+  // Ganti ke http://10.0.2.2:5000/api jika menjalankan di Android Emulator
+  static const String _baseUrl = 'http://localhost:5000/api';
+
   final _namaC = TextEditingController();
   final _emailC = TextEditingController();
   final _hpC = TextEditingController();
@@ -29,6 +34,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _hidePass = true;
   bool _hideConfirm = true;
   bool _agree = false;
+  bool _isSubmitting = false;
 
   // STATE UNTUK ERROR NO HP & EMAIL
   String? _hpError;
@@ -98,7 +104,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       focusedErrorBorder: errorBorder,
       suffixIcon: suffix,
       errorText: errorText,
-      errorStyle: GoogleFonts.inter(fontSize: 10, color: Colors.red), // Ukuran teks error
+      errorStyle: GoogleFonts.inter(fontSize: 10, color: Colors.red),
     );
   }
 
@@ -119,7 +125,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Text(label, style: _label()),
         ),
         const SizedBox(height: 10),
-        // SizedBox dihapus agar tinggi TextField bisa menyesuaikan jika ada error text
         TextField(
           controller: controller,
           keyboardType: type,
@@ -190,7 +195,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             children: [
               const SizedBox(height: 12),
-              // Garis abu-abu di atas modal
               Center(
                 child: Container(
                   width: 44,
@@ -202,7 +206,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              // Header title + tombol close
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
@@ -227,7 +230,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const Divider(height: 20, thickness: 1, color: Color(0xFFF0F0F0)),
-              // Konten teks
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -241,25 +243,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 14),
                       _modalSectionTitle('1. Tentang Layanan'),
                       _modalSectionBody('SIMPASI adalah aplikasi yang membantu memantau data tumbuh kembang balita, termasuk hasil pemeriksaan antropometri (berat badan, tinggi badan, lingkar kepala, lingkar lengan) dan status gizi yang diinput oleh kader posyandu berdasarkan hasil pemeriksaan langsung terhadap anak Anda.'),
-
                       _modalSectionTitle('2. Bukan Diagnosis Medis'),
                       _modalSectionBody('Status ("Normal" / "Berisiko" / "Stunting") dan rekomendasi menu adalah hasil pencatatan kader, bukan diagnosis dokter. Kalau ada hal yang mengkhawatirkan, konsultasikan ke puskesmas atau fasilitas kesehatan terdekat.'),
-
                       _modalSectionTitle('3. Akun Anda'),
                       _modalSectionBody('Jaga kerahasiaan email dan password Anda. Segera hubungi kader/admin bila menduga akun diakses tanpa izin.'),
-
                       _modalSectionTitle('4. Hak Anda'),
                       _modalSectionBody('Anda berhak melihat riwayat pemeriksaan anak secara transparan dan mengajukan koreksi ke kader bila ada data yang dirasa tidak sesuai.'),
-
                       _modalSectionTitle('5. Larangan'),
                       _modalSectionBody('Dilarang mengakses data anak lain di luar anak/wali Anda, menyebarkan data kesehatan anak lain tanpa izin, atau mengganggu sistem aplikasi.'),
-
                       _modalSectionTitle('6. Batasan Tanggung Jawab'),
                       _modalSectionBody('SIMPASI adalah alat bantu pemantauan, bukan pengganti layanan kesehatan resmi. Kami tidak bertanggung jawab atas keputusan yang diambil tanpa konsultasi tenaga kesehatan.'),
-
                       _modalSectionTitle('7. Perubahan Ketentuan'),
                       _modalSectionBody('Ketentuan ini bisa diperbarui sewaktu-waktu; versi terbaru selalu tersedia di aplikasi.'),
-
                       const SizedBox(height: 24),
                       Text(
                         'Kebijakan Privasi',
@@ -275,25 +270,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         style: GoogleFonts.inter(fontSize: 13, height: 1.5, color: Colors.black87),
                       ),
                       const SizedBox(height: 14),
-
                       _modalSectionTitle('1. Data yang Dikumpulkan'),
                       _modalSectionBody('Data akun Anda seperti nama, email, no. HP, password terenkripsi dan data anak seperti nama, tanggal lahir, hasil ukuran fisik, status gizi, catatan kader yang diinput saat pemeriksaan.'),
-
                       _modalSectionTitle('2. Penggunaan Data'),
                       _modalSectionBody('Untuk menampilkan riwayat tumbuh kembang anak, membantu kader/puskesmas memantau gizi, memberi rekomendasi menu MPASI, dan pelaporan program stunting secara agregat (tanpa identitas).'),
-
                       _modalSectionTitle('3. Pembagian Data'),
                       _modalSectionBody('Dibagikan ke kader posyandu wilayah Anda dan puskesmas/dinas kesehatan setempat (untuk pelaporan). Kami tidak menjual data ke pihak ketiga.'),
-
                       _modalSectionTitle('4. Data Anak sebagai Data Sensitif'),
                       _modalSectionBody('Akses dibatasi hanya untuk orang tua/wali terdaftar dan kader yang menangani anak tersebut (role-based access).'),
-
                       _modalSectionTitle('5. Keamanan Data'),
                       _modalSectionBody('Data disimpan terenkripsi dengan akses terbatas. Setiap perubahan data pemeriksaan tercatat (siapa & kapan mengubah) sebagai jejak audit.'),
-
                       _modalSectionTitle('6. Hak Anda'),
                       _modalSectionBody('Akses untuk melihat seluruh data anak Anda. Koreksi ajukan perbaikan lewat kader. Ajukan penghapusan akun (data historis bisa tetap tersimpan teragregasi/anonim untuk pelaporan kesehatan sesuai ketentuan berlaku).'),
-
                       _modalSectionTitle('7. Penyimpanan & Perubahan Kebijakan'),
                       _modalSectionBody('Data disimpan selama akun aktif. Kebijakan ini bisa diperbarui, dan perubahan signifikan akan diinformasikan lewat aplikasi.'),
                       const SizedBox(height: 32),
@@ -337,7 +325,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _showErrorDialog(String title, String message) {
     showDialog(
       context: context,
-      barrierDismissible: true, // Bisa diklik di luar untuk menutup
+      barrierDismissible: true,
       builder: (ctx) {
         return _AutoDismissErrorDialog(
           title: title,
@@ -347,20 +335,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // ---------- Aksi Tombol ----------
-  void _onRegister() {
-    // Reset error terlebih dahulu
+  // ---------- Aksi Tombol & Integrasi API Register ----------
+  Future<void> _onRegister() async {
+    if (_isSubmitting) return;
+
     setState(() {
       _hpError = null;
       _emailError = null;
     });
 
+    final fullName = _namaC.text.trim();
+    final email = _emailC.text.trim();
+    final phone = _hpC.text.trim();
+    final password = _passC.text;
+    final confirmPassword = _confirmC.text;
+
     // 1. Cek kolom kosong
-    if (_namaC.text.trim().isEmpty ||
-        _emailC.text.trim().isEmpty ||
-        _hpC.text.trim().isEmpty ||
-        _passC.text.isEmpty ||
-        _confirmC.text.isEmpty) {
+    if (fullName.isEmpty ||
+        email.isEmpty ||
+        phone.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
       _showErrorDialog(
         'Semua Kolom Wajib Diisi',
         'Silakan lengkapi nama, email, no. HP, dan kata sandi Anda terlebih dahulu sebelum mendaftar.',
@@ -369,16 +364,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     // 2. Cek Panjang No. HP (MINIMAL 11 & MAKSIMAL 13 DIGIT)
-    final int hpLength = _hpC.text.trim().length;
+    final int hpLength = phone.length;
     if (hpLength < 11 || hpLength > 13) {
       setState(() {
         _hpError = 'No. HP harus 11 - 13 digit';
       });
-      return; // Hentikan proses
+      return;
     }
 
-    // 3. Cek format email 
-    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_emailC.text.trim())) {
+    // 3. Cek format email
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
       setState(() {
         _emailError = 'Format email tidak valid';
       });
@@ -395,7 +390,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     // 5. Cek konfirmasi kata sandi
-    if (_passC.text != _confirmC.text) {
+    if (password != confirmPassword) {
       _showErrorDialog(
         'Konfirmasi Kata Sandi Salah',
         'Kata sandi dan konfirmasi kata sandi tidak sama. Silakan periksa kembali.',
@@ -412,13 +407,81 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // Pindah ke layar Verifikasi OTP
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => OtpVerificationScreen(email: _emailC.text),
-      ),
-    );
+    setState(() => _isSubmitting = true);
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/auth/register'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'fullName': fullName,
+              'email': email,
+              'phone': phone,
+              'password': password,
+              'confirmPassword': confirmPassword,
+              'agreeToTerms': _agree,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (!mounted) return;
+
+      Map<String, dynamic> body = {};
+      if (response.body.isNotEmpty) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          body = decoded;
+        }
+      }
+
+      final message = (body['message'] as String?) ??
+          (response.statusCode == 201
+              ? 'Registrasi berhasil! Kode OTP telah dikirim ke email Anda.'
+              : 'Gagal mendaftar. Silakan coba lagi.');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OtpVerificationScreen(email: email),
+          ),
+        );
+        return;
+      }
+
+      if (response.statusCode == 409 && body['needsVerification'] == true) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OtpVerificationScreen(email: email),
+          ),
+        );
+        return;
+      }
+
+      if (response.statusCode == 409) {
+        setState(() => _emailError = message);
+      }
+
+      _showErrorDialog('Registrasi Gagal', message);
+    } on TimeoutException {
+      if (!mounted) return;
+      _showErrorDialog(
+        'Koneksi Terputus',
+        'Permintaan ke server memakan waktu terlalu lama. Periksa koneksi Anda lalu coba lagi.',
+      );
+    } catch (_) {
+      if (!mounted) return;
+      _showErrorDialog(
+        'Gagal Terhubung ke Server',
+        'Tidak dapat menghubungi server. Pastikan backend berjalan dan alamat server sudah benar.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   // ---------- UI ----------
@@ -448,7 +511,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // Konten Form
           SafeArea(
             top: false,
-            // Menggunakan LayoutBuilder & IntrinsicHeight agar fit ke layar
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
@@ -458,7 +520,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: IntrinsicHeight(
                       child: Column(
                         children: [
-                          // Jarak atas sedikit dikurangi agar muat
                           const SizedBox(height: 40),
 
                           // Maskot
@@ -490,7 +551,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               color: Colors.white,
                             ),
                           ),
-                          // Jarak sebelum card dikurangi
                           const SizedBox(height: 15),
 
                           // Card form
@@ -511,8 +571,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   controller: _namaC,
                                 ),
                                 const SizedBox(height: 20),
-                                
-                                // KOLOM EMAIL DENGAN VALIDASI CAUTION MERAH
+
                                 _field(
                                   label: 'Alamat Email',
                                   hint: 'nama@gmail.com',
@@ -520,15 +579,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   type: TextInputType.emailAddress,
                                   errorText: _emailError,
                                   onChanged: (val) {
-                                    // Jika user mulai mengetik format yang benar, hilangkan caution merah
-                                    if (_emailError != null && RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(val.trim())) {
+                                    if (_emailError != null &&
+                                        RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                            .hasMatch(val.trim())) {
                                       setState(() => _emailError = null);
                                     }
                                   },
                                 ),
                                 const SizedBox(height: 20),
-                                
-                                // KOLOM NO HP DENGAN VALIDASI 11-13 DIGIT
+
                                 _field(
                                   label: 'No.HP',
                                   hint: '08xxxxxxxxxx',
@@ -537,15 +596,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   errorText: _hpError,
                                   onChanged: (val) {
                                     final int length = val.trim().length;
-                                    // Jika error sudah muncul dan user mengetik 11 - 13 digit, hilangkan error
-                                    if (_hpError != null && length >= 11 && length <= 13) {
+                                    if (_hpError != null &&
+                                        length >= 11 &&
+                                        length <= 13) {
                                       setState(() => _hpError = null);
                                     }
                                   },
                                 ),
                                 const SizedBox(height: 20),
 
-                                // Kata sandi + Konfirmasi (2 kolom)
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -572,7 +631,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                                 const SizedBox(height: 8),
 
-                                // Keterangan syarat kata sandi
                                 Padding(
                                   padding: const EdgeInsets.only(left: 4),
                                   child: Text(
@@ -580,7 +638,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     style: GoogleFonts.inter(
                                       fontSize: 10,
                                       fontStyle: FontStyle.italic,
-                                      color: (_hasMinLength && _hasUppercase && _hasDigit)
+                                      color: (_hasMinLength &&
+                                              _hasUppercase &&
+                                              _hasDigit)
                                           ? successGreen
                                           : grey,
                                     ),
@@ -588,7 +648,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                                 const SizedBox(height: 16),
 
-                                // Checkbox syarat & ketentuan
                                 Row(
                                   children: [
                                     SizedBox(
@@ -596,15 +655,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       height: 17,
                                       child: Checkbox(
                                         value: _agree,
-                                        onChanged: (v) =>
-                                            setState(() => _agree = v ?? false),
+                                        onChanged: _isSubmitting
+                                            ? null
+                                            : (v) => setState(
+                                                () => _agree = v ?? false),
                                         activeColor: primary,
                                         checkColor: Colors.white,
                                         fillColor: WidgetStateProperty.resolveWith(
-                                          (states) =>
-                                              states.contains(WidgetState.selected)
-                                                  ? primary
-                                                  : const Color(0xFFF7F8F0),
+                                          (states) => states
+                                                  .contains(WidgetState.selected)
+                                              ? primary
+                                              : const Color(0xFFF7F8F0),
                                         ),
                                         side: const BorderSide(
                                           color: Color(0xFF797777),
@@ -626,7 +687,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                             color: Colors.black,
                                           ),
                                           children: [
-                                            const TextSpan(text: 'Saya menyetujui '),
+                                            const TextSpan(
+                                                text: 'Saya menyetujui '),
                                             TextSpan(
                                               text: 'Syarat & Ketentuan',
                                               style: GoogleFonts.inter(
@@ -636,7 +698,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                               ),
                                               recognizer: TapGestureRecognizer()
                                                 ..onTap = () =>
-                                                    _showTermsAndPrivacyModal(context),
+                                                    _showTermsAndPrivacyModal(
+                                                        context),
                                             ),
                                             const TextSpan(text: ' serta '),
                                             TextSpan(
@@ -648,7 +711,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                               ),
                                               recognizer: TapGestureRecognizer()
                                                 ..onTap = () =>
-                                                    _showTermsAndPrivacyModal(context),
+                                                    _showTermsAndPrivacyModal(
+                                                        context),
                                             ),
                                           ],
                                         ),
@@ -663,32 +727,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   width: double.infinity,
                                   height: 48,
                                   child: ElevatedButton(
-                                    onPressed: _onRegister,
+                                    onPressed: _isSubmitting ? null : _onRegister,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: accent,
+                                      disabledBackgroundColor:
+                                          accent.withValues(alpha: 0.65),
                                       elevation: 0,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                     ),
-                                    child: Text(
-                                      'Daftar Sekarang',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
+                                    child: _isSubmitting
+                                        ? const SizedBox(
+                                            width: 22,
+                                            height: 22,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2.4,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : Text(
+                                            'Daftar Sekarang',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
 
-                          // Spacer untuk mengisi sisa layar
                           const Spacer(),
-
-                          const SizedBox(height: 20), // Jarak atas footer
+                          const SizedBox(height: 20),
 
                           // Footer
                           Row(
@@ -721,7 +794,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 24), // Jarak bawah
+                          const SizedBox(height: 24),
                         ],
                       ),
                     ),
@@ -756,7 +829,6 @@ class _AutoDismissErrorDialogState extends State<_AutoDismissErrorDialog> {
   @override
   void initState() {
     super.initState();
-    // Timer untuk menutup otomatis setelah 3 detik
     _timer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.of(context).pop();
@@ -766,7 +838,7 @@ class _AutoDismissErrorDialogState extends State<_AutoDismissErrorDialog> {
 
   @override
   void dispose() {
-    _timer?.cancel(); // Batalkan timer jika popup sudah ditutup manual oleh user
+    _timer?.cancel();
     super.dispose();
   }
 
