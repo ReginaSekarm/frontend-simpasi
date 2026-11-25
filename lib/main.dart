@@ -79,7 +79,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Simpasi',
+      title: 'SiMPASI',
       debugShowCheckedModeBanner: false,
       theme: app_theme.AppTheme.light,
       scrollBehavior: const AppScrollBehavior(),

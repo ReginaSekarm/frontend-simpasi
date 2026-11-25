@@ -32,6 +32,8 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
   static const Color primaryOrange = Color(0xFFF1A038);
   static const Color textBlack     = Color(0xFF000000);
   static const Color textGrey      = Color(0xFF8F8F8F);
+  static const Color errorRed      = Color(0xFFFF0000);
+  static const Color successGreen  = Color(0xFF76C457);
   static const Color inputBg       = Color(0x99FFFFFF); // white 60%
 
   final _oldPassC = TextEditingController();
@@ -42,6 +44,10 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
   bool _hideNew = true;
   bool _hideConfirm = true;
   bool _saving = false;
+
+  String? _oldError;
+  String? _newError;
+  String? _confirmError;
 
   @override
   void dispose() {
@@ -60,33 +66,49 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
     final newP = _newPassC.text;
     final conf = _confirmPassC.text;
 
-    // Validasi (aturan sama dengan backend: min 8 karakter, 1 huruf besar, 1 angka)
-    if (oldP.isEmpty || newP.isEmpty || conf.isEmpty) {
-      _snack('Semua kolom wajib diisi');
-      return;
+    String? oldErr;
+    String? newErr;
+    String? confErr;
+
+    if (oldP.isEmpty) {
+      oldErr = 'Kata sandi lama wajib diisi.';
     }
-    if (newP.length < 8) {
-      _snack('Kata sandi baru minimal 8 karakter');
-      return;
+
+    // Validasi syarat kata sandi baru (min 8 karakter, 1 huruf besar, 1 angka, tidak sama dengan sandi lama)
+    if (newP.isEmpty) {
+      newErr = 'Kata sandi baru wajib diisi.';
+    } else if (newP.length < 8) {
+      newErr = 'Kata sandi baru minimal 8 karakter.';
+    } else if (!RegExp(r'[A-Z]').hasMatch(newP)) {
+      newErr = 'Kata sandi baru harus mengandung huruf besar.';
+    } else if (!RegExp(r'\d').hasMatch(newP)) {
+      newErr = 'Kata sandi baru harus mengandung angka.';
+    } else if (newP == oldP) {
+      newErr = 'Kata sandi baru tidak boleh sama dengan kata sandi lama.';
     }
-    if (!RegExp(r'[A-Z]').hasMatch(newP)) {
-      _snack('Kata sandi baru harus mengandung huruf besar');
-      return;
+
+    if (conf.isEmpty) {
+      confErr = 'Konfirmasi kata sandi wajib diisi.';
+    } else if (newP != conf) {
+      confErr = 'Konfirmasi kata sandi tidak cocok. Periksa lagi lalu masukkan ulang.';
     }
-    if (!RegExp(r'\d').hasMatch(newP)) {
-      _snack('Kata sandi baru harus mengandung angka');
-      return;
-    }
-    if (newP != conf) {
-      _snack('Konfirmasi kata sandi tidak cocok');
-      return;
-    }
-    if (newP == oldP) {
-      _snack('Kata sandi baru tidak boleh sama dengan kata sandi lama');
+
+    if (oldErr != null || newErr != null || confErr != null) {
+      setState(() {
+        _oldError = oldErr;
+        _newError = newErr;
+        _confirmError = confErr;
+      });
       return;
     }
 
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _oldError = null;
+      _newError = null;
+      _confirmError = null;
+    });
+
     final error = await UserService.changePassword(
       oldPassword: oldP,
       newPassword: newP,
@@ -96,18 +118,97 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
     setState(() => _saving = false);
 
     if (error != null) {
-      _snack(error);
+      setState(() {
+        final lower = error.toLowerCase();
+        if (lower.contains('lama') || lower.contains('salah') || lower.contains('old')) {
+          _oldError = error;
+        } else {
+          _newError = error;
+        }
+      });
       return;
     }
 
-    _snack('Kata sandi berhasil diubah');
-    Navigator.of(context).pop();
+    await _showSuccessPopup(context);
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
+  // ================= POPUP BERHASIL UBAH KATA SANDI =================
+  Future<void> _showSuccessPopup(BuildContext context) {
+    return showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (dialogContext) {
+        Future.delayed(const Duration(seconds: 2), () {
+          if (dialogContext.mounted && Navigator.of(dialogContext).canPop()) {
+            Navigator.of(dialogContext).pop();
+          }
+        });
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 29),
+          child: GestureDetector(
+            onTap: () => Navigator.of(dialogContext).pop(),
+            child: Container(
+              width: 335,
+              height: 218,
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 17),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: successGreen,
+                        width: 4,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.check_rounded,
+                      color: successGreen,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Kata sandi berhasil diubah',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: textBlack,
+                      height: 24 / 20,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Kata sandi baru Anda sudah berhasil diperbarui.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: textGrey,
+                      height: 17 / 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -177,7 +278,13 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
                   _buildPasswordField(
                     controller: _oldPassC,
                     hide: _hideOld,
+                    errorText: _oldError,
                     onToggle: () => setState(() => _hideOld = !_hideOld),
+                    onChanged: () {
+                      if (_oldError != null) {
+                        setState(() => _oldError = null);
+                      }
+                    },
                   ),
 
                   const SizedBox(height: 36),
@@ -188,7 +295,13 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
                   _buildPasswordField(
                     controller: _newPassC,
                     hide: _hideNew,
+                    errorText: _newError,
                     onToggle: () => setState(() => _hideNew = !_hideNew),
+                    onChanged: () {
+                      if (_newError != null) {
+                        setState(() => _newError = null);
+                      }
+                    },
                   ),
 
                   const SizedBox(height: 36),
@@ -199,8 +312,14 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
                   _buildPasswordField(
                     controller: _confirmPassC,
                     hide: _hideConfirm,
+                    errorText: _confirmError,
                     onToggle: () =>
                         setState(() => _hideConfirm = !_hideConfirm),
+                    onChanged: () {
+                      if (_confirmError != null) {
+                        setState(() => _confirmError = null);
+                      }
+                    },
                   ),
 
                   const SizedBox(height: 46),
@@ -270,47 +389,72 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
     required TextEditingController controller,
     required bool hide,
     required VoidCallback onToggle,
+    required VoidCallback onChanged,
+    String? errorText,
   }) {
-    return Container(
-      height: 50,
-      padding: const EdgeInsets.only(left: 14, right: 14),
-      decoration: BoxDecoration(
-        color: inputBg,
-        border: Border.all(color: textBlack, width: 1),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              obscureText: hide,
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: textBlack,
-                height: 19 / 16,
-              ),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
+    final hasError = errorText != null && errorText.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 50,
+          padding: const EdgeInsets.only(left: 14, right: 14),
+          decoration: BoxDecoration(
+            color: inputBg,
+            border: Border.all(
+              color: hasError ? errorRed : textBlack,
+              width: 1,
             ),
+            borderRadius: BorderRadius.circular(10),
           ),
-          GestureDetector(
-            onTap: onToggle,
-            behavior: HitTestBehavior.opaque,
-            child: Icon(
-              hide ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-              size: 20,
-              color: textGrey,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  obscureText: hide,
+                  onChanged: (_) => onChanged(),
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: textBlack,
+                    height: 19 / 16,
+                  ),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: onToggle,
+                behavior: HitTestBehavior.opaque,
+                child: Icon(
+                  hide ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  size: 20,
+                  color: textGrey,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (hasError) ...[
+          const SizedBox(height: 7),
+          Text(
+            errorText,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w400,
+              color: errorRed,
+              height: 12 / 10,
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 }

@@ -43,6 +43,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
   static const Color bgCream       = Color(0xFFFCEBD5);
   static const Color textBlack     = Color(0xFF000000);
   static const Color textBrown     = Color(0xFF9E5665);
+  static const Color errorRed      = Color(0xFFFF0000);
   static const Color inputBg       = Color(0x99FFFFFF);
   static const Color disabledBtn   = Color(0xFFD9D9D9);
 
@@ -52,6 +53,10 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
 
   bool _hasChanges = false;
   bool _saving = false;
+
+  String? _namaError;
+  String? _emailError;
+  String? _hpError;
 
   @override
   void initState() {
@@ -86,12 +91,6 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     });
   }
 
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
-  }
-
   // ================= SIMPAN KE BACKEND =================
   Future<void> _simpan() async {
     if (_saving) return;
@@ -101,29 +100,47 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     final hp = _hpC.text.replaceAll(RegExp(r'[\s-]'), '');
     final digitHp = hp.replaceAll('+', '');
 
+    String? namaErr;
+    String? emailErr;
+    String? hpErr;
+
     // Validasi (aturan sama dengan backend)
     if (nama.isEmpty) {
-      _snack('Nama lengkap wajib diisi');
-      return;
+      namaErr = 'Nama lengkap wajib diisi.';
+    } else if (nama.length > 100) {
+      namaErr = 'Nama lengkap maksimal 100 karakter.';
     }
-    if (nama.length > 100) {
-      _snack('Nama lengkap maksimal 100 karakter');
-      return;
+
+    if (email.isEmpty) {
+      emailErr = 'Alamat email wajib diisi.';
+    } else if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      emailErr = 'Format email tidak valid. Periksa lagi lalu masukkan ulang.';
     }
-    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
-      _snack('Format email tidak valid');
-      return;
+
+    if (hp.isEmpty) {
+      hpErr = 'Nomor HP wajib diisi.';
+    } else if (!RegExp(r'^\+?\d+$').hasMatch(hp)) {
+      hpErr = 'Nomor HP hanya boleh berisi angka.';
+    } else if (digitHp.length < 10 || digitHp.length > 15) {
+      hpErr = 'Nomor HP harus terdiri dari 10 hingga 15 digit.';
     }
-    if (!RegExp(r'^\+?\d+$').hasMatch(hp)) {
-      _snack('Nomor HP hanya boleh berisi angka');
-      return;
-    }
-    if (digitHp.length < 10 || digitHp.length > 15) {
-      _snack('Nomor HP harus terdiri dari 10 hingga 15 digit');
+
+    if (namaErr != null || emailErr != null || hpErr != null) {
+      setState(() {
+        _namaError = namaErr;
+        _emailError = emailErr;
+        _hpError = hpErr;
+      });
       return;
     }
 
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _namaError = null;
+      _emailError = null;
+      _hpError = null;
+    });
+
     final error = await UserService.updateProfile(
       fullName: nama,
       email: email,
@@ -133,7 +150,16 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     setState(() => _saving = false);
 
     if (error != null) {
-      _snack(error);
+      setState(() {
+        final lower = error.toLowerCase();
+        if (lower.contains('email')) {
+          _emailError = error;
+        } else if (lower.contains('hp') || lower.contains('phone') || lower.contains('nomor')) {
+          _hpError = error;
+        } else {
+          _namaError = error;
+        }
+      });
       return;
     }
 
@@ -370,7 +396,11 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                   SizedBox(height: context.w(6)),
                   _buildTextField(
                     controller: _namaC,
-                    onChanged: (_) => _checkChanges(),
+                    errorText: _namaError,
+                    onChanged: (_) {
+                      if (_namaError != null) _namaError = null;
+                      _checkChanges();
+                    },
                   ),
 
                   SizedBox(height: context.w(26)),
@@ -381,7 +411,11 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                   _buildTextField(
                     controller: _emailC,
                     keyboardType: TextInputType.emailAddress,
-                    onChanged: (_) => _checkChanges(),
+                    errorText: _emailError,
+                    onChanged: (_) {
+                      if (_emailError != null) _emailError = null;
+                      _checkChanges();
+                    },
                   ),
 
                   SizedBox(height: context.w(26)),
@@ -392,7 +426,11 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                   _buildTextField(
                     controller: _hpC,
                     keyboardType: TextInputType.phone,
-                    onChanged: (_) => _checkChanges(),
+                    errorText: _hpError,
+                    onChanged: (_) {
+                      if (_hpError != null) _hpError = null;
+                      _checkChanges();
+                    },
                   ),
 
                   SizedBox(height: context.w(40)),
@@ -466,35 +504,58 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     required TextEditingController controller,
     TextInputType? keyboardType,
     required ValueChanged<String> onChanged,
+    String? errorText,
   }) {
-    return Container(
-      height: context.w(50),
-      padding: EdgeInsets.symmetric(horizontal: context.w(14)),
-      decoration: BoxDecoration(
-        color: inputBg,
-        border: Border.all(color: textBlack, width: context.w(1)),
-        borderRadius: BorderRadius.circular(context.w(10)),
-      ),
-      child: Center(
-        child: TextField(
-          controller: controller,
-          keyboardType: keyboardType,
-          onChanged: onChanged,
-          style: GoogleFonts.inter(
-            fontSize: context.sp(16),
-            fontWeight: FontWeight.w500,
-            color: textBlack,
-            height: 19 / 16,
+    final hasError = errorText != null && errorText.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: context.w(50),
+          padding: EdgeInsets.symmetric(horizontal: context.w(14)),
+          decoration: BoxDecoration(
+            color: inputBg,
+            border: Border.all(
+              color: hasError ? errorRed : textBlack,
+              width: context.w(1),
+            ),
+            borderRadius: BorderRadius.circular(context.w(10)),
           ),
-          decoration: const InputDecoration(
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            isDense: true,
-            contentPadding: EdgeInsets.zero,
+          child: Center(
+            child: TextField(
+              controller: controller,
+              keyboardType: keyboardType,
+              onChanged: onChanged,
+              style: GoogleFonts.inter(
+                fontSize: context.sp(16),
+                fontWeight: FontWeight.w500,
+                color: textBlack,
+                height: 19 / 16,
+              ),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
           ),
         ),
-      ),
+        if (hasError) ...[
+          SizedBox(height: context.w(7)),
+          Text(
+            errorText,
+            style: GoogleFonts.inter(
+              fontSize: context.sp(10),
+              fontWeight: FontWeight.w400,
+              color: errorRed,
+              height: 12 / 10,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
