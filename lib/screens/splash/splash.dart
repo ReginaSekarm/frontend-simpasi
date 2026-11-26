@@ -3,7 +3,10 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:go_router/go_router.dart';
+
+// Halaman onboarding (splash -> onboarding -> login)
+// CATATAN: sesuaikan path import ini dengan lokasi onboarding1.dart di project kamu
+import 'package:simpasi/screens/onboarding/onboarding1.dart';
 
 /// Ukuran frame desain (Figma)
 const double kW = 393;
@@ -224,11 +227,18 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
 
-    // Gunakan GoRouter agar alur rute tetap konsisten dengan main.dart
     if (widget.onFinished != null) {
       widget.onFinished!();
     } else {
-      context.go('/login');
+      // Alur yang benar: Splash -> Onboarding -> Login
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 400),
+          pageBuilder: (_, __, ___) => const OnboardingPage(),
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: anim, child: child),
+        ),
+      );
     }
   }
 
