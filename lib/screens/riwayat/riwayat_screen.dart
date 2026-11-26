@@ -39,6 +39,7 @@ class _BabyOption {
   final String umur;
   final String gender;
   final String alergi;
+  final String status;
   final String birthPlace;
   final String birthDate;
   final String parentName;
@@ -50,6 +51,7 @@ class _BabyOption {
     required this.umur,
     required this.gender,
     required this.alergi,
+    this.status = 'Normal',
     this.birthPlace = '',
     this.birthDate = '',
     this.parentName = '',
@@ -271,6 +273,54 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     return const ['Ayam', 'Telur', 'Sayuran', 'Buah'];
   }
 
+  // Hitung umur dari tanggal lahir, hasilnya sama seperti di Home ("10 Bulan" / "1 Tahun")
+  String? _umurDariTanggalLahir(String raw) {
+    final s = raw.trim();
+    if (s.isEmpty) return null;
+
+    int? y, m, d;
+    final datePart = s.contains('T') ? s.split('T').first : s;
+    if (datePart.contains('/')) {
+      final p = datePart.split('/');
+      if (p.length == 3) {
+        d = int.tryParse(p[0]);
+        m = int.tryParse(p[1]);
+        y = int.tryParse(p[2]);
+      }
+    } else if (datePart.contains('-')) {
+      final p = datePart.split('-');
+      if (p.length == 3) {
+        y = int.tryParse(p[0]);
+        m = int.tryParse(p[1]);
+        d = int.tryParse(p[2]);
+      }
+    }
+    if (y == null || m == null || d == null) return null;
+
+    final birth = DateTime(y, m, d);
+    final now = DateTime.now();
+    if (birth.isAfter(now)) return null;
+
+    int months = (now.year - birth.year) * 12 + now.month - birth.month;
+    if (now.day < birth.day) months--;
+    if (months < 0) months = 0;
+
+    if (months < 12) return '$months Bulan';
+    final years = months ~/ 12;
+    final rest = months % 12;
+    return rest == 0 ? '$years Tahun' : '$years Tahun $rest Bulan';
+  }
+
+  // Samakan label kondisi dengan yang dipakai di Home
+  String _normalizeKondisi(String raw) {
+    final v = raw.trim().toLowerCase();
+    if (v.isEmpty) return 'Normal';
+    if (v.contains('stunt')) return 'Stunting';
+    if (v.contains('risiko')) return 'Berisiko';
+    if (v == 'normal') return 'Normal';
+    return raw.trim();
+  }
+
   String _formatGender(String raw) {
     final lower = raw.trim().toLowerCase();
     if (lower == 'l' || lower == 'laki-laki' || lower == 'male' || lower == 'm') {
@@ -481,18 +531,33 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             ['age_months', 'ageMonths', 'age', 'umur'],
             '6',
           );
-          final umur = umurRaw.toLowerCase().contains('bulan')
-              ? umurRaw
-              : '$umurRaw Bulan';
+          final tglLahirRaw = _strVal(
+            map,
+            ['birth_date', 'birthDate', 'birth_date_str', 'tanggal_lahir'],
+            '',
+          );
+          // Umur dihitung dari tanggal lahir supaya sama dengan tampilan di Home
+          final umur = _umurDariTanggalLahir(tglLahirRaw) ??
+              (umurRaw.toLowerCase().contains('bulan')
+                  ? umurRaw
+                  : '$umurRaw Bulan');
           final gender = _strVal(
             map,
             ['gender', 'jenis_kelamin', 'sex'],
             'Laki-laki',
           );
+          // Kosong kalau belum diisi (bukan '-'), supaya form alergi tampil kosong
           final alergi = _strVal(
             map,
             ['allergies', 'allergy', 'alergi'],
-            '-',
+            '',
+          );
+          final status = _normalizeKondisi(
+            _strVal(
+              map,
+              ['condition', 'condition_note', 'conditionNote', 'status'],
+              '',
+            ),
           );
           final birthPlace = _strVal(
             map,
@@ -521,6 +586,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               umur: umur,
               gender: gender,
               alergi: alergi,
+              status: status,
               birthPlace: birthPlace,
               birthDate: birthDate,
               parentName: parentName,
@@ -822,7 +888,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     return _babies.first;
   }
 
-    // Popup saat ibu belum menambahkan data anak
+  // Popup saat ibu belum menambahkan data anak
   void _showTambahDataAnakDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -847,7 +913,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 height: context.w(64),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color.fromARGB(255, 255, 0, 30), width: context.w(4)),
+                  border: Border.all(
+                    color: const Color.fromARGB(255, 255, 0, 30),
+                    width: context.w(4),
+                  ),
                 ),
                 child: Icon(
                   Icons.priority_high_rounded,
@@ -877,7 +946,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   height: 17 / 13,
                 ),
               ),
-                            SizedBox(height: context.w(20)),
+              SizedBox(height: context.w(20)),
               SizedBox(
                 width: double.infinity,
                 height: context.w(44),
@@ -1211,13 +1280,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           SizedBox(
             height: context.w(44),
             child: ElevatedButton(
-                            onPressed: () {
+              onPressed: () {
                 final baby = _currentBaby;
                 // Belum ada data anak -> tampilkan popup, jangan masuk ke halaman AI
                 if (baby == null) {
                   _showTambahDataAnakDialog(context);
                   return;
-                  
                 }
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -1227,13 +1295,13 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         nama: baby.nama,
                         umur: baby.umur,
                         gender: baby.gender,
+                        status: baby.status,
                         alergi: baby.alergi,
                       ),
                     ),
                   ),
                 );
               },
-              
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryRed,
                 foregroundColor: Colors.white,
@@ -1415,6 +1483,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 nama: baby?.nama ?? item.childName ?? 'Anak',
                 umur: baby?.umur ?? item.childAge ?? '-',
                 gender: baby?.gender ?? item.childGender ?? 'P',
+                status: baby?.status ?? 'Normal',
                 alergi: baby?.alergi ?? item.childAllergy ?? '',
               ),
               initialBahan: bahanText,
