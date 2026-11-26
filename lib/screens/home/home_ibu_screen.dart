@@ -29,8 +29,13 @@ import '../riwayat/riwayat_screen.dart';
 
 class HomeIbuScreen extends StatefulWidget {
   final bool showLoginSuccess;
+  final bool openAddChildForm;
 
-  const HomeIbuScreen({super.key, this.showLoginSuccess = false});
+  const HomeIbuScreen({
+    super.key,
+    this.showLoginSuccess = false,
+    this.openAddChildForm = false,
+  });
 
   @override
   State<HomeIbuScreen> createState() => _HomeIbuScreenState();
@@ -557,12 +562,18 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     super.initState();
     _syncCurrentChild();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       if (widget.showLoginSuccess) {
         _showLoginSuccessSnackBar();
       }
-      _fetchHomeData(showLoading: false);
+      await _fetchHomeData(showLoading: false);
+
+      // Datang dari popup "Isi Data Anak" -> langsung buka form tambah anak
+      if (!mounted) return;
+      if (widget.openAddChildForm && !_hasChild) {
+        _openTambahAnak();
+      }
     });
   }
 

@@ -110,15 +110,9 @@ class _MenuScreenState extends State<MenuScreen> {
   String _ibuName = 'Aisyah';
   bool _isLoading = true;
 
-  // ID anak yang datanya sedang ditampilkan (untuk deteksi ganti anak)
   int? _loadedBabyId;
-  // Penanda request terbaru, supaya respons lama tidak menimpa yang baru
   int _loadToken = 0;
-  bool _isTogglingFav = false; // State untuk mencegah klik ganda saat memuat API
-
-  // pemantau perubahan favorit (untuk snackbar)
-  Set<String> _prevFavs = {};
-  bool _syncingFav = false; // true saat favorit diisi dari server (tanpa snackbar)
+  bool _isTogglingFav = false;
 
   String _filterAge = 'Semua';
   List<String> _filterIngredients = [];
@@ -202,148 +196,58 @@ class _MenuScreenState extends State<MenuScreen> {
     if (months == null) return true;
     final cat = rawCategory.trim().toLowerCase();
     if (cat.isEmpty) return true;
-    if (months == 6) {
-      return cat == '6' || cat.contains('6');
-    }
+    if (months == 6) return cat == '6' || cat.contains('6');
     if (months >= 7 && months <= 8) {
-      return cat == '7-8' ||
-          cat == '7' ||
-          cat == '8' ||
-          cat.contains('7 - 8') ||
-          cat.contains('7-8');
+      return cat == '7-8' || cat == '7' || cat == '8' || cat.contains('7 - 8') || cat.contains('7-8');
     }
     if (months >= 9 && months <= 11) {
       return cat == '9-11' || cat.contains('9 - 11') || cat.contains('9-11');
     }
-    if (months >= 12) {
-      return cat == '12+' || cat.contains('12');
-    }
+    if (months >= 12) return cat == '12+' || cat.contains('12');
     return true;
   }
 
   String _pickRecipeImage(Map<String, dynamic> r, [String title = '']) {
-    for (final key in [
-      'photo_url',
-      'photoUrl',
-      'image_url',
-      'imageUrl',
-      'image_path',
-      'imagePath',
-    ]) {
+    for (final key in ['photo_url','photoUrl','image_url','imageUrl','image_path','imagePath']) {
       final val = (r[key] ?? '').toString().trim();
       if (val.isNotEmpty) return val;
     }
-    if (title.toLowerCase().contains('tahu ayam wortel')) {
-      return 'assets/images/tahu-ayam-wortel.png';
-    }
-    if (title.toLowerCase().contains('pepaya')) {
-      return 'assets/images/pepaya-lumat.png';
-    }
-    if (title.toLowerCase().contains('ubi')) {
-      return 'assets/images/kue-ubi-keju.png';
-    }
-    if (title.toLowerCase().contains('pisang')) {
-      return 'assets/images/telur-santan-pisang.png';
-    }
-    if (title.toLowerCase().contains('potato')) {
-      return 'assets/images/egg-potato-mash.png';
-    }
+    if (title.toLowerCase().contains('tahu ayam wortel')) return 'assets/images/tahu-ayam-wortel.png';
+    if (title.toLowerCase().contains('pepaya')) return 'assets/images/pepaya-lumat.png';
+    if (title.toLowerCase().contains('ubi')) return 'assets/images/kue-ubi-keju.png';
+    if (title.toLowerCase().contains('pisang')) return 'assets/images/telur-santan-pisang.png';
+    if (title.toLowerCase().contains('potato')) return 'assets/images/egg-potato-mash.png';
     return 'assets/images/bubur-hati-ayam.png';
   }
 
   List<String> _extractIngredients(Map<String, dynamic> map) {
-    final raw = map['ingredients'] ??
-        map['ingredient_categories'] ??
-        map['ingredientCategories'] ??
-        map['categories'] ??
-        map['bahan'];
-    if (raw is List) {
-      return raw
-          .map((e) => e?.toString().trim() ?? '')
-          .where((e) => e.isNotEmpty)
-          .toList();
-    }
-    if (raw is String && raw.trim().isNotEmpty) {
-      return raw
-          .split(',')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
-    }
+    final raw = map['ingredients'] ?? map['ingredient_categories'] ?? map['ingredientCategories'] ?? map['categories'] ?? map['bahan'];
+    if (raw is List) return raw.map((e) => e?.toString().trim() ?? '').where((e) => e.isNotEmpty).toList();
+    if (raw is String && raw.trim().isNotEmpty) return raw.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     return const [];
   }
 
   _MenuData _mapRecipe(Map<String, dynamic> map, {String? overrideBadge}) {
-    final nestedRecipe = map['recipe'] is Map
-        ? Map<String, dynamic>.from(map['recipe'] as Map)
-        : (map['Recipe'] is Map
-            ? Map<String, dynamic>.from(map['Recipe'] as Map)
-            : <String, dynamic>{});
-
-    final id = _parseId(
-      map['id'] ??
-          map['recipe_id'] ??
-          map['recipeId'] ??
-          nestedRecipe['id'] ??
-          nestedRecipe['recipe_id'],
-    );
-    final title = (map['title'] ??
-            map['name'] ??
-            map['nama_menu'] ??
-            nestedRecipe['title'] ??
-            nestedRecipe['name'] ??
-            'Menu MPASI')
-        .toString()
-        .trim();
-    final imagePath = _pickRecipeImage(
-      map.isNotEmpty ? map : nestedRecipe,
-      title,
-    );
-    final badge = overrideBadge ??
-        _formatBadge(
-          map['age_category'] ??
-              map['ageCategory'] ??
-              map['badge'] ??
-              nestedRecipe['age_category'] ??
-              nestedRecipe['badge'],
-        );
-    final ingredients = _extractIngredients(
-      map.containsKey('ingredients') || map.containsKey('bahan')
-          ? map
-          : nestedRecipe,
-    );
-    final isNew = map['is_new'] == true ||
-        map['isNew'] == true ||
-        nestedRecipe['is_new'] == true;
-
-    return _MenuData(
-      id: id,
-      title: title,
-      imagePath: imagePath,
-      badge: badge,
-      ingredients: ingredients,
-      isNew: isNew,
-    );
+    final nestedRecipe = map['recipe'] is Map ? Map<String, dynamic>.from(map['recipe'] as Map) : (map['Recipe'] is Map ? Map<String, dynamic>.from(map['Recipe'] as Map) : <String, dynamic>{});
+    final id = _parseId(map['id'] ?? map['recipe_id'] ?? map['recipeId'] ?? nestedRecipe['id'] ?? nestedRecipe['recipe_id']);
+    final title = (map['title'] ?? map['name'] ?? map['nama_menu'] ?? nestedRecipe['title'] ?? nestedRecipe['name'] ?? 'Menu MPASI').toString().trim();
+    final imagePath = _pickRecipeImage(map.isNotEmpty ? map : nestedRecipe, title);
+    final badge = overrideBadge ?? _formatBadge(map['age_category'] ?? map['ageCategory'] ?? map['badge'] ?? nestedRecipe['age_category'] ?? nestedRecipe['badge']);
+    final ingredients = _extractIngredients(map.containsKey('ingredients') || map.containsKey('bahan') ? map : nestedRecipe);
+    final isNew = map['is_new'] == true || map['isNew'] == true || nestedRecipe['is_new'] == true;
+    return _MenuData(id: id, title: title, imagePath: imagePath, badge: badge, ingredients: ingredients, isNew: isNew);
   }
 
   List<_MenuData> _parseRecipeList(dynamic rawList, {String? overrideBadge}) {
     if (rawList is! List) return const [];
     final parsed = <_MenuData>[];
     for (final item in rawList) {
-      if (item is Map) {
-        parsed.add(
-          _mapRecipe(Map<String, dynamic>.from(item), overrideBadge: overrideBadge),
-        );
-      }
+      if (item is Map) parsed.add(_mapRecipe(Map<String, dynamic>.from(item), overrideBadge: overrideBadge));
     }
     return parsed;
   }
 
-  Future<List<_MenuData>> _fetchRecipesByAgeFallback(
-    int? months,
-    String defaultBadge,
-    List<_MenuData> currentAllMenus,
-  ) async {
+  Future<List<_MenuData>> _fetchRecipesByAgeFallback(int? months, String defaultBadge, List<_MenuData> currentAllMenus) async {
     try {
       final recipesRes = await ApiClient.get('/recipes');
       final rawList = recipesRes['data'];
@@ -354,70 +258,44 @@ class _MenuScreenState extends State<MenuScreen> {
           final r = Map<String, dynamic>.from(item);
           final title = (r['title'] ?? r['name'] ?? '').toString().trim();
           if (title.isEmpty) continue;
-          final rawCat =
-              (r['age_category'] ?? r['ageCategory'] ?? r['badge'] ?? '')
-                  .toString();
+          final rawCat = (r['age_category'] ?? r['ageCategory'] ?? r['badge'] ?? '').toString();
           if (!_matchesAgeCategory(rawCat, months)) continue;
-
-          final badge = rawCat.trim().isNotEmpty
-              ? _formatBadge(rawCat)
-              : defaultBadge;
+          final badge = rawCat.trim().isNotEmpty ? _formatBadge(rawCat) : defaultBadge;
           results.add(_mapRecipe(r, overrideBadge: badge));
         }
         if (results.isNotEmpty) return results;
       }
-    } catch (_) {
-      // Lanjut ke fallback lokal jika request gagal
-    }
-
+    } catch (_) {}
     if (months != null) {
-      final localAgeMatch = currentAllMenus
-          .where((m) => _matchesAgeCategory(m.badge, months))
-          .toList();
+      final localAgeMatch = currentAllMenus.where((m) => _matchesAgeCategory(m.badge, months)).toList();
       if (localAgeMatch.isNotEmpty) return localAgeMatch;
     }
-
     return const [];
   }
 
-  // Pilih anak aktif: prioritas ID, lalu nama persis, terakhir anak pertama.
   Map<String, dynamic>? _pickActiveBaby(List rawBabies) {
     final targetId = ChildStore.currentId.value;
     final targetName = ChildStore.currentName.value.trim().toLowerCase();
-
     final babies = <Map<String, dynamic>>[];
     for (final b in rawBabies) {
       if (b is Map) babies.add(Map<String, dynamic>.from(b));
     }
     if (babies.isEmpty) return null;
-
     if (targetId != null) {
       for (final b in babies) {
-        final bId = _parseId(
-          b['id'] ?? b['baby_id'] ?? b['babyId'] ?? b['child_id'],
-        );
+        final bId = _parseId(b['id'] ?? b['baby_id'] ?? b['babyId'] ?? b['child_id']);
         if (bId == targetId) return b;
       }
     }
-
     if (targetName.isNotEmpty) {
       for (final b in babies) {
-        final bName = (b['full_name'] ??
-                b['fullName'] ??
-                b['name'] ??
-                b['nama'] ??
-                '')
-            .toString()
-            .trim()
-            .toLowerCase();
+        final bName = (b['full_name'] ?? b['fullName'] ?? b['name'] ?? b['nama'] ?? '').toString().trim().toLowerCase();
         if (bName == targetName) return b;
       }
     }
-
     return babies.first;
   }
 
-  // FUNGSI SINKRONISASI FAVORIT DARI BACKEND 
   Future<void> _syncFavoriteStateFromBackend() async {
     if (_loadedBabyId == null) return;
     try {
@@ -425,38 +303,16 @@ class _MenuScreenState extends State<MenuScreen> {
       final res = await ApiClient.get(endpoint);
       final rawData = res['data'];
       if (rawData is! List || !mounted) return;
-
       final Set<String> childFavs = {};
       for (final entry in rawData) {
         if (entry is! Map) continue;
         final map = Map<String, dynamic>.from(entry);
-        
-        final nestedRecipe = map['recipe'] is Map
-            ? Map<String, dynamic>.from(map['recipe'] as Map)
-            : <String, dynamic>{};
-            
-        final itemTitle = (nestedRecipe['title'] ??
-                nestedRecipe['name'] ??
-                map['title'] ??
-                map['name'] ??
-                '')
-            .toString()
-            .trim();
-
-        if (itemTitle.isNotEmpty) {
-          childFavs.add(itemTitle);
-        }
+        final nestedRecipe = map['recipe'] is Map ? Map<String, dynamic>.from(map['recipe'] as Map) : <String, dynamic>{};
+        final itemTitle = (nestedRecipe['title'] ?? nestedRecipe['name'] ?? map['title'] ?? map['name'] ?? '').toString().trim();
+        if (itemTitle.isNotEmpty) childFavs.add(itemTitle);
       }
-
-      // Isi dari server: jangan tampilkan snackbar
-      _syncingFav = true;
       RecipeStore.favorites.value = childFavs;
-      _prevFavs = Set<String>.from(childFavs);
-      _syncingFav = false;
-    } catch (_) {
-      _syncingFav = false;
-      // Abaikan jika gagal sync
-    }
+    } catch (_) {}
   }
 
   Future<void> _loadMenuData() async {
@@ -475,9 +331,7 @@ class _MenuScreenState extends State<MenuScreen> {
       final p = profileResult.profile;
       if (p != null && p.fullName.trim().isNotEmpty) {
         final parts = p.fullName.trim().split(RegExp(r'\s+'));
-        if (parts.isNotEmpty) {
-          detectedIbuName = parts.first;
-        }
+        if (parts.isNotEmpty) detectedIbuName = parts.first;
       }
     } catch (_) {}
 
@@ -486,76 +340,32 @@ class _MenuScreenState extends State<MenuScreen> {
       final rawBabies = babiesRes['data'] ?? babiesRes['babies'];
       if (rawBabies is List && rawBabies.isNotEmpty) {
         final chosenBaby = _pickActiveBaby(rawBabies);
-
         if (chosenBaby != null) {
-          activeBabyId = _parseId(
-            chosenBaby['id'] ??
-                chosenBaby['baby_id'] ??
-                chosenBaby['babyId'] ??
-                chosenBaby['child_id'],
-          );
-          final bNama = (chosenBaby['full_name'] ??
-                  chosenBaby['fullName'] ??
-                  chosenBaby['name'] ??
-                  chosenBaby['nama'])
-              ?.toString()
-              .trim();
-          if (bNama != null && bNama.isNotEmpty) {
-            activeBabyName = bNama;
-          }
-          activeBabyMonths = _hitungBulanUsia(
-            chosenBaby['birth_date'] ??
-                chosenBaby['birthDate'] ??
-                chosenBaby['tanggalLahir'],
-          );
+          activeBabyId = _parseId(chosenBaby['id'] ?? chosenBaby['baby_id'] ?? chosenBaby['babyId'] ?? chosenBaby['child_id']);
+          final bNama = (chosenBaby['full_name'] ?? chosenBaby['fullName'] ?? chosenBaby['name'] ?? chosenBaby['nama'])?.toString().trim();
+          if (bNama != null && bNama.isNotEmpty) activeBabyName = bNama;
+          activeBabyMonths = _hitungBulanUsia(chosenBaby['birth_date'] ?? chosenBaby['birthDate'] ?? chosenBaby['tanggalLahir']);
         }
       }
     } on ApiException {}
 
     try {
       final recipesRes = await ApiClient.get('/recipes');
-      final parsed = _parseRecipeList(
-        recipesRes['data'] ?? recipesRes['recipes'] ?? recipesRes['items'],
-      );
-      if (parsed.isNotEmpty) {
-        loadedMenus = parsed;
-      }
+      final parsed = _parseRecipeList(recipesRes['data'] ?? recipesRes['recipes'] ?? recipesRes['items']);
+      if (parsed.isNotEmpty) loadedMenus = parsed;
     } on ApiException {}
 
-    final defaultBadge = activeBabyMonths != null && activeBabyMonths < 12
-        ? '$activeBabyMonths Bulan'
-        : 'MPASI';
+    final defaultBadge = activeBabyMonths != null && activeBabyMonths < 12 ? '$activeBabyMonths Bulan' : 'MPASI';
 
     if (activeBabyId != null) {
       try {
-        final recoRes =
-            await ApiClient.get('/babies/$activeBabyId/recommendations?limit=10');
-        final info = recoRes['info'] is Map
-            ? Map<String, dynamic>.from(recoRes['info'] as Map)
-            : <String, dynamic>{};
-        final badgeText = info['ageCategory'] != null &&
-                info['ageCategory'].toString().trim().isNotEmpty
-            ? _formatBadge(info['ageCategory'])
-            : defaultBadge;
-
-        loadedReco = _parseRecipeList(
-          recoRes['data'] ?? recoRes['recommendations'],
-          overrideBadge: badgeText,
-        );
-
-        if (loadedReco.isEmpty) {
-          loadedReco = await _fetchRecipesByAgeFallback(
-            activeBabyMonths,
-            badgeText,
-            loadedMenus,
-          );
-        }
+        final recoRes = await ApiClient.get('/babies/$activeBabyId/recommendations?limit=10');
+        final info = recoRes['info'] is Map ? Map<String, dynamic>.from(recoRes['info'] as Map) : <String, dynamic>{};
+        final badgeText = info['ageCategory'] != null && info['ageCategory'].toString().trim().isNotEmpty ? _formatBadge(info['ageCategory']) : defaultBadge;
+        loadedReco = _parseRecipeList(recoRes['data'] ?? recoRes['recommendations'], overrideBadge: badgeText);
+        if (loadedReco.isEmpty) loadedReco = await _fetchRecipesByAgeFallback(activeBabyMonths, badgeText, loadedMenus);
       } on ApiException {
-        loadedReco = await _fetchRecipesByAgeFallback(
-          activeBabyMonths,
-          defaultBadge,
-          loadedMenus,
-        );
+        loadedReco = await _fetchRecipesByAgeFallback(activeBabyMonths, defaultBadge, loadedMenus);
       }
     } else {
       loadedReco = [];
@@ -567,23 +377,18 @@ class _MenuScreenState extends State<MenuScreen> {
 
     if (ChildStore.currentId.value == null && activeBabyId != null) {
       ChildStore.setCurrent(activeBabyName ?? '', id: activeBabyId);
-    } else if (ChildStore.currentName.value.trim().isEmpty &&
-        activeBabyName != null &&
-        activeBabyName.isNotEmpty) {
+    } else if (ChildStore.currentName.value.trim().isEmpty && activeBabyName != null && activeBabyName.isNotEmpty) {
       ChildStore.setCurrent(activeBabyName, id: ChildStore.currentId.value);
     }
 
     setState(() {
-      if (detectedIbuName != null && detectedIbuName.isNotEmpty) {
-        _ibuName = detectedIbuName;
-      }
+      if (detectedIbuName != null && detectedIbuName.isNotEmpty) _ibuName = detectedIbuName;
       _allMenus = loadedMenus;
       _recommended = loadedReco;
       _rekomendasiTitleSet = loadedReco.map((e) => e.title).toSet();
       _isLoading = false;
     });
 
-    // SINKRONISASI FAVORIT SETELAH DATA ANAK DIMUAT
     _syncFavoriteStateFromBackend();
   }
 
@@ -591,68 +396,6 @@ class _MenuScreenState extends State<MenuScreen> {
     final newId = ChildStore.currentId.value;
     if (newId == null || newId == _loadedBabyId) return;
     _loadMenuData();
-  }
-
-  // BARU: dipanggil setiap daftar favorit berubah.
-  // Snackbar hanya muncul bila halaman Menu sedang di depan dan perubahannya
-  // dari ketukan ikon hati (tepat satu resep ditambah / dihapus).
-  void _onFavoritesChanged() {
-    final now = RecipeStore.favorites.value;
-    final prev = _prevFavs;
-    _prevFavs = Set<String>.from(now);
-
-    if (_syncingFav || !mounted) return;
-    if (ModalRoute.of(context)?.isCurrent != true) return;
-
-    final added = now.difference(prev);
-    final removed = prev.difference(now);
-
-    if (added.length == 1 && removed.isEmpty) {
-      _showFavSnack('Resep disimpan ke koleksi');
-    } else if (removed.length == 1 && added.isEmpty) {
-      _showFavSnack('Resep dihapus dari koleksi');
-    }
-  }
-
-  // BARU: snackbar pil merah muda di dasar layar (sama dengan halaman Detail)
-  void _showFavSnack(String msg) {
-    if (!mounted) return;
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          padding: EdgeInsets.zero,
-          duration: const Duration(seconds: 2),
-          margin: EdgeInsets.fromLTRB(20, 0, 20, 12 + bottomInset),
-          content: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF45060),
-                borderRadius: BorderRadius.circular(17),
-              ),
-              child: Text(
-                msg,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  height: 17 / 14,
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
   }
 
   @override
@@ -663,18 +406,12 @@ class _MenuScreenState extends State<MenuScreen> {
       _filterIngredients = List<String>.from(init);
     }
     ChildStore.currentId.addListener(_onActiveChildChanged);
-
-    // BARU: mulai memantau perubahan favorit
-    _prevFavs = Set<String>.from(RecipeStore.favorites.value);
-    RecipeStore.favorites.addListener(_onFavoritesChanged);
-
     _loadMenuData();
   }
 
   @override
   void dispose() {
     ChildStore.currentId.removeListener(_onActiveChildChanged);
-    RecipeStore.favorites.removeListener(_onFavoritesChanged); 
     _searchController.dispose();
     super.dispose();
   }
@@ -682,17 +419,11 @@ class _MenuScreenState extends State<MenuScreen> {
   List<_MenuData> get _filteredMenus {
     final query = _searchQuery.trim().toLowerCase();
     return _allMenus.where((m) {
-      if (query.isNotEmpty && !m.title.toLowerCase().contains(query)) {
-        return false;
-      }
-      if (_filterAge != 'Semua' && _normAge(_filterAge) != _normAge(m.badge)) {
-        return false;
-      }
+      if (query.isNotEmpty && !m.title.toLowerCase().contains(query)) return false;
+      if (_filterAge != 'Semua' && _normAge(_filterAge) != _normAge(m.badge)) return false;
       if (_filterIngredients.isNotEmpty) {
         final wanted = _filterIngredients.map(_normIng).toSet();
-        if (!m.ingredients.any((i) => wanted.contains(_normIng(i)))) {
-          return false;
-        }
+        if (!m.ingredients.any((i) => wanted.contains(_normIng(i)))) return false;
       }
       return true;
     }).toList();
@@ -702,16 +433,12 @@ class _MenuScreenState extends State<MenuScreen> {
     final filtered = _filteredMenus;
     if (_isSearching) return filtered;
     if (!_isFilterActive || widget.fromPemeriksaan) {
-      return filtered
-          .where((m) => !_rekomendasiTitleSet.contains(m.title))
-          .toList();
+      return filtered.where((m) => !_rekomendasiTitleSet.contains(m.title)).toList();
     }
     return filtered;
   }
 
-  // ================= AKSI =================
-  void _go(Widget page) =>
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  void _go(Widget page) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
   void _clearSearch() {
     _searchController.clear();
@@ -736,24 +463,17 @@ class _MenuScreenState extends State<MenuScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.4),
-      builder: (_) => FilterMenuSheet(
-        initialAge: _filterAge,
-        initialIngredients: _filterIngredients,
-      ),
+      builder: (_) => FilterMenuSheet(initialAge: _filterAge, initialIngredients: _filterIngredients),
     );
-
     if (rawResult is Map) {
       final result = Map<String, dynamic>.from(rawResult);
       final rawIngredients = result['ingredients'];
       final nextIngredients = <String>[];
       if (rawIngredients is List) {
         for (final item in rawIngredients) {
-          if (item != null) {
-            nextIngredients.add(item.toString());
-          }
+          if (item != null) nextIngredients.add(item.toString());
         }
       }
-
       setState(() {
         _filterAge = (result['age'] as String?) ?? 'Semua';
         _filterIngredients = nextIngredients;
@@ -761,16 +481,12 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-  // FUNGSI UNTUK TOGGLE FAVORIT DI HALAMAN MENU 
   Future<void> _toggleFavorite(_MenuData m) async {
     if (_isTogglingFav || _loadedBabyId == null) return;
-    
-    // 1. Cek status saat ini
     final favs = Set<String>.from(RecipeStore.favorites.value);
     final isCurrentlyLiked = favs.contains(m.title);
     final nextLiked = !isCurrentlyLiked;
 
-    // 2. Update lokal (optimistic) agar ikon langsung berubah
     if (nextLiked) {
       favs.add(m.title);
     } else {
@@ -780,28 +496,18 @@ class _MenuScreenState extends State<MenuScreen> {
     setState(() => _isTogglingFav = true);
 
     try {
-      // 3. Tembak API
       if (nextLiked) {
-        await ApiClient.post(
-          '/collection',
-          data: {
-            'recipeId': m.id,
-            'babyId': _loadedBabyId,
-          },
-        );
+        await ApiClient.post('/collection', data: {'recipeId': m.id, 'babyId': _loadedBabyId});
       } else {
         await ApiClient.delete('/collection/${m.id}?babyId=$_loadedBabyId');
       }
     } catch (e) {
-      // 4. Jika gagal, batalkan perubahan ikon (rollback)
       if (nextLiked) {
         favs.remove(m.title);
       } else {
         favs.add(m.title);
       }
       RecipeStore.favorites.value = favs;
-      
-      // Tampilkan pesan error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal memperbarui koleksi: $e')),
@@ -819,7 +525,7 @@ class _MenuScreenState extends State<MenuScreen> {
       );
 
   Widget _card(_MenuData m, {bool border = true}) => MenuRecommendationCard(
-        recipeId: m.id, // Pastikan ID dimasukkan
+        recipeId: m.id,
         title: m.title,
         imagePath: m.imagePath,
         badge: m.badge,
@@ -836,7 +542,6 @@ class _MenuScreenState extends State<MenuScreen> {
         ),
       );
 
-  // ================= BUILD =================
   @override
   Widget build(BuildContext context) {
     final hasBaby = _loadedBabyId != null;
@@ -854,9 +559,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 _buildHeader(context),
                 Expanded(
                   child: _isLoading
-                      ? const Center(
-                          child: CircularProgressIndicator(color: primaryRed),
-                        )
+                      ? const Center(child: CircularProgressIndicator(color: primaryRed))
                       : RefreshIndicator(
                           color: primaryRed,
                           onRefresh: _loadMenuData,
@@ -883,15 +586,23 @@ class _MenuScreenState extends State<MenuScreen> {
                 ),
               ],
             ),
+            
+            // PERBAIKAN BOTTOM NAV AGAR TIDAK ERROR SAAT PINDAH HALAMAN
             BottomNav(
               currentIndex: 1,
               onTap: (i) {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
                 switch (i) {
                   case 0:
                     _go(const KoleksiScreen());
                   case 2:
                     if (Navigator.of(context).canPop()) {
-                      Navigator.of(context).popUntil((r) => r.isFirst);
+                      Future.microtask(() {
+                        if (mounted) {
+                          Navigator.of(context).popUntil((r) => r.isFirst);
+                        }
+                      });
                     }
                   case 3:
                     _go(const RiwayatScreen());
@@ -906,7 +617,6 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  // ================= HEADER =================
   Widget _buildHeader(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
     final h = topPad + context.w(190);
@@ -920,12 +630,9 @@ class _MenuScreenState extends State<MenuScreen> {
             height: h,
             decoration: BoxDecoration(
               color: primaryRed,
-              borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(context.w(50)),
-              ),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(context.w(50))),
             ),
           ),
-          
           Positioned(
             top: topPad + 20,
             left: 20,
@@ -937,18 +644,11 @@ class _MenuScreenState extends State<MenuScreen> {
                   Container(
                     width: 50,
                     height: 50,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFCEBD5),
-                      shape: BoxShape.circle,
-                    ),
+                    decoration: const BoxDecoration(color: Color(0xFFFCEBD5), shape: BoxShape.circle),
                     child: Center(
                       child: Text(
                         _ibuInitial,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF9E5665),
-                        ),
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF9E5665)),
                       ),
                     ),
                   ),
@@ -958,11 +658,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       _ibuName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                   ),
                   NotificationIconButton(
@@ -973,7 +669,6 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
             ),
           ),
-
           Positioned(
             top: topPad + context.w(106),
             left: context.w(37),
@@ -1047,10 +742,7 @@ class _MenuScreenState extends State<MenuScreen> {
           Container(
             width: context.w(42),
             height: context.w(45),
-            decoration: BoxDecoration(
-              color: bgTeal,
-              borderRadius: BorderRadius.circular(context.w(10)),
-            ),
+            decoration: BoxDecoration(color: bgTeal, borderRadius: BorderRadius.circular(context.w(10))),
             child: Center(child: _slidersIcon(context, tealDark, 20)),
           ),
           if (_isFilterActive)
@@ -1072,8 +764,7 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  Widget _slidersIcon(BuildContext context, Color color, double size) =>
-      SvgPicture.asset(
+  Widget _slidersIcon(BuildContext context, Color color, double size) => SvgPicture.asset(
         'assets/images/sliders-bold.svg',
         width: context.w(size),
         height: context.w(size),
@@ -1081,11 +772,9 @@ class _MenuScreenState extends State<MenuScreen> {
         colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
       );
 
-  // ================= CHIPS DARI PEMERIKSAAN =================
   Widget _buildPemeriksaanChips(BuildContext context) {
     final items = widget.initialIngredients;
     if (items == null || items.isEmpty) return const SizedBox.shrink();
-
     final selected = _filterIngredients.map(_normIng).toSet();
 
     return Padding(
@@ -1093,10 +782,7 @@ class _MenuScreenState extends State<MenuScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Berdasarkan Hasil Pemeriksaan',
-            style: context.txt(12, w: 700, c: textGrey, h: 15 / 12),
-          ),
+          Text('Berdasarkan Hasil Pemeriksaan', style: context.txt(12, w: 700, c: textGrey, h: 15 / 12)),
           SizedBox(height: context.w(12)),
           Wrap(
             spacing: context.w(12),
@@ -1132,17 +818,11 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  // ================= KOTAK REKOMENDASI =================
   Widget _buildRecommendationBox(BuildContext context) {
     return Container(
       width: double.infinity,
       margin: EdgeInsets.symmetric(horizontal: context.w(23)),
-      padding: EdgeInsets.fromLTRB(
-        context.w(26),
-        context.w(18),
-        context.w(26),
-        context.w(30),
-      ),
+      padding: EdgeInsets.fromLTRB(context.w(26), context.w(18), context.w(26), context.w(30)),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topCenter,
@@ -1163,28 +843,13 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
           ),
           SizedBox(height: context.w(4)),
-          Text(
-            'Rekomendasi Menu',
-            style: context.txt(
-              20,
-              w: 700,
-              c: Colors.black.withValues(alpha: 0.7),
-              h: 24 / 20,
-            ),
-          ),
+          Text('Rekomendasi Menu', style: context.txt(20, w: 700, c: Colors.black.withValues(alpha: 0.7), h: 24 / 20)),
           SizedBox(height: context.w(22)),
           SizedBox(
             height: context.w(186),
             child: _recommended.isEmpty
                 ? Center(
-                    child: Text(
-                      'Belum ada rekomendasi menu',
-                      style: context.txt(
-                        12,
-                        w: 500,
-                        c: Colors.black.withValues(alpha: 0.6),
-                      ),
-                    ),
+                    child: Text('Belum ada rekomendasi menu', style: context.txt(12, w: 500, c: Colors.black.withValues(alpha: 0.6))),
                   )
                 : ListView(
                     scrollDirection: Axis.horizontal,
@@ -1202,7 +867,6 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  // ================= GRID =================
   Widget _buildGrid(BuildContext context) {
     final items = _gridMenus;
     if (items.isEmpty) return _buildEmpty(context);
@@ -1214,11 +878,7 @@ class _MenuScreenState extends State<MenuScreen> {
       final needTop = left.isNew || (right?.isNew ?? false);
 
       rows.add(Padding(
-        padding: EdgeInsets.only(
-          left: context.w(37),
-          right: context.w(37),
-          top: needTop ? context.w(14) : 0,
-        ),
+        padding: EdgeInsets.only(left: context.w(37), right: context.w(37), top: needTop ? context.w(14) : 0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1234,7 +894,6 @@ class _MenuScreenState extends State<MenuScreen> {
     return Column(children: rows);
   }
 
-  // ================= TIDAK DITEMUKAN =================
   Widget _buildEmpty(BuildContext context) {
     final msg = _isSearching
         ? 'Tidak ada resep dengan nama "${_searchQuery.trim()}".\nCoba kata kunci lain.'
@@ -1249,29 +908,15 @@ class _MenuScreenState extends State<MenuScreen> {
             Container(
               width: context.w(120),
               height: context.w(120),
-              decoration: const BoxDecoration(
-                color: bgPeachSoft,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                _isSearching ? Icons.search_off : Icons.filter_alt_off,
-                size: context.w(60),
-                color: primaryRed,
-              ),
+              decoration: const BoxDecoration(color: bgPeachSoft, shape: BoxShape.circle),
+              child: Icon(_isSearching ? Icons.search_off : Icons.filter_alt_off, size: context.w(60), color: primaryRed),
             ),
             SizedBox(height: context.w(23)),
-            Text(
-              'Tidak Ditemukan',
-              style: context.txt(18, w: 600, h: 22 / 18),
-            ),
+            Text('Tidak Ditemukan', style: context.txt(18, w: 600, h: 22 / 18)),
             SizedBox(height: context.w(7)),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: context.w(40)),
-              child: Text(
-                msg,
-                textAlign: TextAlign.center,
-                style: context.txt(13, w: 500, c: textBlack50, h: 16 / 13),
-              ),
+              child: Text(msg, textAlign: TextAlign.center, style: context.txt(13, w: 500, c: textBlack50, h: 16 / 13)),
             ),
             SizedBox(height: context.w(28)),
             Row(
@@ -1280,17 +925,11 @@ class _MenuScreenState extends State<MenuScreen> {
                 _tap(
                   _resetFilterAndSearch,
                   Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: context.w(10),
-                      vertical: context.w(8),
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: context.w(10), vertical: context.w(8)),
                     child: Row(children: [
                       _slidersIcon(context, textBlack71, 20),
                       SizedBox(width: context.w(8)),
-                      Text(
-                        'Reset Filter',
-                        style: context.txt(14, w: 600, c: textBlack71, h: 17 / 14),
-                      ),
+                      Text('Reset Filter', style: context.txt(14, w: 600, c: textBlack71, h: 17 / 14)),
                     ]),
                   ),
                 ),
@@ -1298,21 +937,12 @@ class _MenuScreenState extends State<MenuScreen> {
                 _tap(
                   _resetFilterAndSearch,
                   Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: context.w(20),
-                      vertical: context.w(9),
-                    ),
-                    decoration: BoxDecoration(
-                      color: badgeYellow,
-                      borderRadius: BorderRadius.circular(context.w(22)),
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: context.w(20), vertical: context.w(9)),
+                    decoration: BoxDecoration(color: badgeYellow, borderRadius: BorderRadius.circular(context.w(22))),
                     child: Row(children: [
                       Icon(Icons.refresh, size: context.w(18), color: Colors.white),
                       SizedBox(width: context.w(6)),
-                      Text(
-                        'Refresh',
-                        style: context.txt(14, w: 700, c: Colors.white, h: 17 / 14),
-                      ),
+                      Text('Refresh', style: context.txt(14, w: 700, c: Colors.white, h: 17 / 14)),
                     ]),
                   ),
                 ),

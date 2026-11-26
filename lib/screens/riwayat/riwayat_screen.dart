@@ -822,6 +822,102 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     return _babies.first;
   }
 
+    // Popup saat ibu belum menambahkan data anak
+  void _showTambahDataAnakDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        insetPadding: EdgeInsets.symmetric(horizontal: context.w(40)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(context.w(24)),
+        ),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            context.w(24),
+            context.w(28),
+            context.w(24),
+            context.w(28),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: context.w(64),
+                height: context.w(64),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color.fromARGB(255, 255, 0, 30), width: context.w(4)),
+                ),
+                child: Icon(
+                  Icons.priority_high_rounded,
+                  color: const Color.fromARGB(255, 255, 0, 30),
+                  size: context.w(36),
+                ),
+              ),
+              SizedBox(height: context.w(18)),
+              Text(
+                'Tambah Data Anak Dulu',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: context.sp(18),
+                  fontWeight: FontWeight.w700,
+                  color: textBlack,
+                  height: 22 / 18,
+                ),
+              ),
+              SizedBox(height: context.w(8)),
+              Text(
+                'Supaya resepnya tepat untuk si kecil, isi dulu data anak di halaman beranda.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: context.sp(13),
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black.withValues(alpha: 0.5),
+                  height: 17 / 13,
+                ),
+              ),
+                            SizedBox(height: context.w(20)),
+              SizedBox(
+                width: double.infinity,
+                height: context.w(44),
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop(); // tutup popup
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const HomeIbuScreen(openAddChildForm: true),
+                      ),
+                      (r) => false,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryRed,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(context.w(30)),
+                    ),
+                  ),
+                  child: Text(
+                    'Isi Data Anak',
+                    style: GoogleFonts.inter(
+                      fontSize: context.sp(15),
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      height: 20 / 15,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1115,22 +1211,29 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           SizedBox(
             height: context.w(44),
             child: ElevatedButton(
-              onPressed: () {
+                            onPressed: () {
                 final baby = _currentBaby;
+                // Belum ada data anak -> tampilkan popup, jangan masuk ke halaman AI
+                if (baby == null) {
+                  _showTambahDataAnakDialog(context);
+                  return;
+                  
+                }
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => TanyaAiScreen(
                       child: AiChildInfo(
-                        id: baby?.id,
-                        nama: baby?.nama ?? 'Anak',
-                        umur: baby?.umur ?? '-',
-                        gender: baby?.gender ?? 'P',
-                        alergi: baby?.alergi ?? '',
+                        id: baby.id,
+                        nama: baby.nama,
+                        umur: baby.umur,
+                        gender: baby.gender,
+                        alergi: baby.alergi,
                       ),
                     ),
                   ),
                 );
               },
+              
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryRed,
                 foregroundColor: Colors.white,

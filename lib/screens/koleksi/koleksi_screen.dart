@@ -98,14 +98,47 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
     super.dispose();
   }
 
+  // 👇 PERUBAHAN SNACKBAR DI SINI (SESUAI GAYA DETAIL RESEP) 👇
   void _snack(String msg) {
     if (!mounted) return;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          padding: EdgeInsets.zero,
+          duration: const Duration(seconds: 2),
+          margin: EdgeInsets.fromLTRB(20, 0, 20, 12 + bottomInset),
+          content: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF45060), // Warna merah/pink tema
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: Text(
+                msg,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 17 / 14,
+                ),
+              ),
+            ),
+          ),
+        ),
       );
   }
+  // 👆 BATAS PERUBAHAN SNACKBAR 👆
 
   int? _parseId(dynamic raw) {
     if (raw == null) return null;
@@ -252,25 +285,25 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
               .toString()
               .trim();
 
-String imagePath = '';
-for (final src in [nestedRecipe, map]) {
-  for (final key in [
-    'photo_url',
-    'photoUrl',
-    'image_url',
-    'imageUrl',
-    'image_path',
-    'imagePath',
-  ]) {
-    final v = (src[key] ?? '').toString().trim();
-    if (v.isNotEmpty) {
-      imagePath = v;
-      break;
-    }
-  }
-  if (imagePath.isNotEmpty) break;
-}
-if (imagePath.isEmpty) imagePath = 'assets/images/bubur-hati-ayam.png';
+          String imagePath = '';
+          for (final src in [nestedRecipe, map]) {
+            for (final key in [
+              'photo_url',
+              'photoUrl',
+              'image_url',
+              'imageUrl',
+              'image_path',
+              'imagePath',
+            ]) {
+              final v = (src[key] ?? '').toString().trim();
+              if (v.isNotEmpty) {
+                imagePath = v;
+                break;
+              }
+            }
+            if (imagePath.isNotEmpty) break;
+          }
+          if (imagePath.isEmpty) imagePath = 'assets/images/bubur-hati-ayam.png';
 
           final rawAge = (nestedRecipe['age_category'] ??
                   nestedRecipe['ageCategory'] ??
