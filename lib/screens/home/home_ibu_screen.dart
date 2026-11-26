@@ -802,7 +802,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   }
   
 
-  void _showLoginSuccessSnackBar() {
+    void _showLoginSuccessSnackBar() {
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
     ScaffoldMessenger.of(context)
@@ -817,28 +817,30 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
           margin: EdgeInsets.fromLTRB(20, 0, 20, 12 + bottomInset),
           content: Center(
             child: Container(
-              width: context.w(275),
-              height: context.w(44),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.w(24),
+                vertical: context.w(12),
+              ),
               decoration: BoxDecoration(
                 color: const Color(0xFF77B255),
                 borderRadius: BorderRadius.circular(context.w(17)),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.check_circle_outline,
                     color: Colors.white,
-                    size: context.w(26),
+                    size: context.w(20),
                   ),
-                  SizedBox(width: context.w(10)),
+                  SizedBox(width: context.w(8)),
                   Text(
                     'Login Berhasil',
                     style: google_fonts.GoogleFonts.inter(
-                      fontSize: context.sp(17),
+                      fontSize: context.sp(14),
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
-                      height: 21 / 17,
+                      height: 17 / 14,
                     ),
                   ),
                 ],
