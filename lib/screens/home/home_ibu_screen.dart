@@ -47,7 +47,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   static const Color textBlack71 = Color(0xB5000000);
   static const Color textBlack50 = Color(0x80000000);
 
-  // 👇 BARU: warna kartu "Mulai dalam 3 langkah"
   static const Color bgMint = Color(0xFFDDF3F1);
   static const Color tealDark = Color(0xFF1A7772);
 
@@ -753,10 +752,44 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   }
 
   void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
-    );
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          padding: EdgeInsets.zero,
+          duration: const Duration(seconds: 2),
+          margin: EdgeInsets.fromLTRB(20, 0, 20, 12 + bottomInset),
+          content: Center(
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: context.w(24),
+                vertical: context.w(12),
+              ),
+              decoration: BoxDecoration(
+                color: primaryRed, // Warna merah tema aplikasi
+                borderRadius: BorderRadius.circular(context.w(17)),
+              ),
+              child: Text(
+                msg,
+                textAlign: TextAlign.center,
+                style: google_fonts.GoogleFonts.inter(
+                  fontSize: context.sp(14),
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 17 / 14,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
   }
+  
 
   void _showLoginSuccessSnackBar() {
     final bottomInset = MediaQuery.of(context).padding.bottom;
@@ -878,7 +911,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
                 children: [
                   _buildHeaderSection(context),
 
-                  // 👇 DIUBAH: tampilan berbeda saat belum / sudah ada data anak
+                  // tampilan berbeda saat belum / sudah ada data anak
                   if (_hasChild) ...[
                     _buildMenuSection(),
                     SizedBox(height: context.w(20)),
@@ -993,10 +1026,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   Widget _buildHeaderSection(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
 
-    // 👇 DIUBAH: ukuran header & posisi kartu berbeda saat belum ada data anak.
-    // Figma (belum ada data): header merah berakhir di y=160, kartu y=138..373.
-    // Dihitung relatif terhadap status bar (±39px di Figma):
-    //   header = topPad + 121, kartu = topPad + 99, total section = topPad + 334.
     final redHeight = topPad + context.w(_hasChild ? 170 : 121);
     final cardTop = topPad + context.w(_hasChild ? 116 : 99);
     final sectionHeight = topPad + context.w(_hasChild ? 286 : 334);
@@ -1115,9 +1144,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  // ================= KARTU "TAMBAH DATA ANAK" (belum ada data) =================
-  // Figma: 337 x 235, radius 30, plus 52.15 (alpha .8), judul 14 w600,
-  // deskripsi 13/16 selebar 284 rata tengah.
   Widget _buildEmptyStateCard() {
     return Material(
       color: bgPeach,
@@ -1465,9 +1491,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  // ================= BANNER RIWAYAT PEMERIKSAAN =================
-  // empty = true  -> versi Figma "belum ada data":
-  //   judul "Riwayat pemeriksaan" (lebar 223), tinggi min 168, jarak 16 & 19.
   Widget _buildStuntingBanner({bool empty = false}) {
     return Container(
       width: double.infinity,
@@ -1566,9 +1589,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  // ================= KARTU "MULAI DALAM 3 LANGKAH" (belum ada data) =================
-  // Figma: 317 x 174, radius 20, warna #DDF3F1, judul 16 w600 #1A7772,
-  // 3 baris langkah (lingkaran 22 + teks 12), tiap baris setinggi 35.
   Widget _buildStepsCard() {
     TextStyle stepStyle({FontWeight weight = FontWeight.w400}) =>
         google_fonts.GoogleFonts.inter(

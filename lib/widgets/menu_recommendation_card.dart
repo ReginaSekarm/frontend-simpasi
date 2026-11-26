@@ -7,6 +7,7 @@ import '../core/network/api_exception.dart';
 import '../screens/menu/detail_resep_screen.dart';
 import '../utils/responsive.dart';
 import 'recipe_store.dart';
+import 'child_store.dart'; // 👈 TAMBAHKAN IMPORT INI
 
 class MenuRecommendationCard extends StatelessWidget {
   final int? recipeId;
@@ -46,6 +47,7 @@ class MenuRecommendationCard extends StatelessWidget {
   void _openDetail(BuildContext context) {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => DetailResepScreen(
+        recipeId: recipeId, // 👈 Pastikan recipeId dikirim
         title: title,
         imagePath: imagePath,
         badge: badge,
@@ -67,11 +69,23 @@ class MenuRecommendationCard extends StatelessWidget {
 
     if (recipeId == null) return;
 
+    // AMBIL BABY ID DARI STORE
+    final babyId = ChildStore.currentId.value;
+
     try {
       if (nextLiked) {
-        await ApiClient.post('/collection', data: {'recipeId': recipeId});
+        await ApiClient.post(
+          '/collection', 
+          data: {
+            'recipeId': recipeId,
+            if (babyId != null) 'babyId': babyId,
+          },
+        );
       } else {
-        await ApiClient.delete('/collection/$recipeId');
+        final endpoint = babyId != null 
+            ? '/collection/$recipeId?babyId=$babyId' 
+            : '/collection/$recipeId';
+        await ApiClient.delete(endpoint);
       }
     } on ApiException catch (e) {
       final reverted = Set<String>.from(RecipeStore.favorites.value);

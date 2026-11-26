@@ -78,11 +78,47 @@ class _ProfilScreenState extends State<ProfilScreen> {
     if (result.error != null) _snack(result.error!);
   }
 
+  // 👇 PERUBAHAN SNACKBAR DI SINI (SESUAI GAMBAR) 👇
   void _snack(String msg) {
+    if (!mounted) return;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          padding: EdgeInsets.zero,
+          duration: const Duration(seconds: 2),
+          margin: EdgeInsets.fromLTRB(20, 0, 20, 12 + bottomInset),
+          content: Center(
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: context.w(24),
+                vertical: context.w(12),
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF45060), 
+                borderRadius: BorderRadius.circular(context.w(17)),
+              ),
+              child: Text(
+                msg,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: context.sp(14),
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 17 / 14,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
   }
+  // 👆 BATAS PERUBAHAN SNACKBAR 👆
 
   String get _tampilNama {
     if (_loading) return 'Memuat...';

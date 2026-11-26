@@ -33,7 +33,6 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
   static const Color textBlack     = Color(0xFF000000);
   static const Color textGrey      = Color(0xFF8F8F8F);
   static const Color errorRed      = Color(0xFFFF0000);
-  static const Color successGreen  = Color(0xFF76C457);
   static const Color inputBg       = Color(0x99FFFFFF); // white 60%
 
   final _oldPassC = TextEditingController();
@@ -55,6 +54,44 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
     _newPassC.dispose();
     _confirmPassC.dispose();
     super.dispose();
+  }
+
+  // FUNGSI SNACKBAR KUSTOM
+  void _snack(String msg) {
+    if (!mounted) return;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          padding: EdgeInsets.zero,
+          duration: const Duration(seconds: 2),
+          margin: EdgeInsets.fromLTRB(20, 0, 20, 12 + bottomInset),
+          content: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF77B255),
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: Text(
+                msg,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 17 / 14,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
   }
 
   // ================= SIMPAN KE BACKEND =================
@@ -129,86 +166,12 @@ class _GantiKataSandiScreenState extends State<GantiKataSandiScreen> {
       return;
     }
 
-    await _showSuccessPopup(context);
+    _snack('Kata sandi berhasil diubah');
+    
+    // Kembali ke halaman Pengaturan setelah snackbar muncul
     if (mounted) {
       Navigator.of(context).pop();
     }
-  }
-
-  // ================= POPUP BERHASIL UBAH KATA SANDI =================
-  Future<void> _showSuccessPopup(BuildContext context) {
-    return showDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
-      builder: (dialogContext) {
-        Future.delayed(const Duration(seconds: 2), () {
-          if (dialogContext.mounted && Navigator.of(dialogContext).canPop()) {
-            Navigator.of(dialogContext).pop();
-          }
-        });
-
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 29),
-          child: GestureDetector(
-            onTap: () => Navigator.of(dialogContext).pop(),
-            child: Container(
-              width: 335,
-              height: 218,
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 17),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: successGreen,
-                        width: 4,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.check_rounded,
-                      color: successGreen,
-                      size: 36,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Kata sandi berhasil diubah',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: textBlack,
-                      height: 24 / 20,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Kata sandi baru Anda sudah berhasil diperbarui.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: textGrey,
-                      height: 17 / 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
   }
 
   @override

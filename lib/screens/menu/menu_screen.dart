@@ -15,9 +15,8 @@ import '../notifikasi/notifikasi_screen.dart';
 import '../profil/profil_screen.dart';
 import '../riwayat/riwayat_screen.dart';
 import 'detail_resep_screen.dart';
-
-// 👇 TAMBAHKAN IMPORT INI AGAR SAMA SEPERTI DI HOME 👇
 import '../../services/user_service.dart';
+import '../../widgets/recipe_store.dart'; 
 
 // ================= DATA MENU =================
 class _MenuData {
@@ -115,6 +114,11 @@ class _MenuScreenState extends State<MenuScreen> {
   int? _loadedBabyId;
   // Penanda request terbaru, supaya respons lama tidak menimpa yang baru
   int _loadToken = 0;
+  bool _isTogglingFav = false; // State untuk mencegah klik ganda saat memuat API
+
+  // pemantau perubahan favorit (untuk snackbar)
+  Set<String> _prevFavs = {};
+  bool _syncingFav = false; // true saat favorit diisi dari server (tanpa snackbar)
 
   String _filterAge = 'Semua';
   List<String> _filterIngredients = [];
@@ -413,6 +417,48 @@ class _MenuScreenState extends State<MenuScreen> {
     return babies.first;
   }
 
+  // FUNGSI SINKRONISASI FAVORIT DARI BACKEND 
+  Future<void> _syncFavoriteStateFromBackend() async {
+    if (_loadedBabyId == null) return;
+    try {
+      final endpoint = '/collection?babyId=$_loadedBabyId';
+      final res = await ApiClient.get(endpoint);
+      final rawData = res['data'];
+      if (rawData is! List || !mounted) return;
+
+      final Set<String> childFavs = {};
+      for (final entry in rawData) {
+        if (entry is! Map) continue;
+        final map = Map<String, dynamic>.from(entry);
+        
+        final nestedRecipe = map['recipe'] is Map
+            ? Map<String, dynamic>.from(map['recipe'] as Map)
+            : <String, dynamic>{};
+            
+        final itemTitle = (nestedRecipe['title'] ??
+                nestedRecipe['name'] ??
+                map['title'] ??
+                map['name'] ??
+                '')
+            .toString()
+            .trim();
+
+        if (itemTitle.isNotEmpty) {
+          childFavs.add(itemTitle);
+        }
+      }
+
+      // Isi dari server: jangan tampilkan snackbar
+      _syncingFav = true;
+      RecipeStore.favorites.value = childFavs;
+      _prevFavs = Set<String>.from(childFavs);
+      _syncingFav = false;
+    } catch (_) {
+      _syncingFav = false;
+      // Abaikan jika gagal sync
+    }
+  }
+
   Future<void> _loadMenuData() async {
     final token = ++_loadToken;
     if (mounted) setState(() => _isLoading = true);
@@ -424,20 +470,16 @@ class _MenuScreenState extends State<MenuScreen> {
     String? activeBabyName;
     int? activeBabyMonths;
 
-    // 👇 AMBIL NAMA DARI USERSERVICE (SAMA SEPERTI DI HOME) 👇
     try {
       final profileResult = await UserService.getProfile();
       final p = profileResult.profile;
       if (p != null && p.fullName.trim().isNotEmpty) {
         final parts = p.fullName.trim().split(RegExp(r'\s+'));
         if (parts.isNotEmpty) {
-          detectedIbuName = parts.first; // Ambil nama depan (Carmenita)
+          detectedIbuName = parts.first;
         }
       }
-    } catch (_) {
-      // Abaikan jika gagal memuat profil
-    }
-    // 👆 BATAS PERUBAHAN PENGAMBILAN NAMA 👆
+    } catch (_) {}
 
     try {
       final babiesRes = await ApiClient.get('/babies');
@@ -468,12 +510,7 @@ class _MenuScreenState extends State<MenuScreen> {
           );
         }
       }
-    } on ApiException {
-      // Abaikan jika gagal mengambil data anak, tetap lanjut muat resep
-    }
-
-    debugPrint('[MenuScreen] babyId=$activeBabyId name=$activeBabyName '
-        'months=$activeBabyMonths storeId=${ChildStore.currentId.value}');
+    } on ApiException {}
 
     try {
       final recipesRes = await ApiClient.get('/recipes');
@@ -483,9 +520,7 @@ class _MenuScreenState extends State<MenuScreen> {
       if (parsed.isNotEmpty) {
         loadedMenus = parsed;
       }
-    } on ApiException {
-      // Pertahankan fallback jika endpoint /recipes gagal
-    }
+    } on ApiException {}
 
     final defaultBadge = activeBabyMonths != null && activeBabyMonths < 12
         ? '$activeBabyMonths Bulan'
@@ -526,13 +561,10 @@ class _MenuScreenState extends State<MenuScreen> {
       loadedReco = [];
     }
 
-    // Ada request yang lebih baru (mis. anak diganti saat loading) -> buang hasil ini
     if (!mounted || token != _loadToken) return;
 
     _loadedBabyId = activeBabyId;
 
-    // Jangan menimpa anak aktif yang sudah dipilih di Home.
-    // Isi store hanya jika masih kosong (belum ada anak aktif).
     if (ChildStore.currentId.value == null && activeBabyId != null) {
       ChildStore.setCurrent(activeBabyName ?? '', id: activeBabyId);
     } else if (ChildStore.currentName.value.trim().isEmpty &&
@@ -550,13 +582,77 @@ class _MenuScreenState extends State<MenuScreen> {
       _rekomendasiTitleSet = loadedReco.map((e) => e.title).toSet();
       _isLoading = false;
     });
+
+    // SINKRONISASI FAVORIT SETELAH DATA ANAK DIMUAT
+    _syncFavoriteStateFromBackend();
   }
 
-  // Dipanggil saat anak aktif di ChildStore berubah
   void _onActiveChildChanged() {
     final newId = ChildStore.currentId.value;
     if (newId == null || newId == _loadedBabyId) return;
     _loadMenuData();
+  }
+
+  // BARU: dipanggil setiap daftar favorit berubah.
+  // Snackbar hanya muncul bila halaman Menu sedang di depan dan perubahannya
+  // dari ketukan ikon hati (tepat satu resep ditambah / dihapus).
+  void _onFavoritesChanged() {
+    final now = RecipeStore.favorites.value;
+    final prev = _prevFavs;
+    _prevFavs = Set<String>.from(now);
+
+    if (_syncingFav || !mounted) return;
+    if (ModalRoute.of(context)?.isCurrent != true) return;
+
+    final added = now.difference(prev);
+    final removed = prev.difference(now);
+
+    if (added.length == 1 && removed.isEmpty) {
+      _showFavSnack('Resep disimpan ke koleksi');
+    } else if (removed.length == 1 && added.isEmpty) {
+      _showFavSnack('Resep dihapus dari koleksi');
+    }
+  }
+
+  // BARU: snackbar pil merah muda di dasar layar (sama dengan halaman Detail)
+  void _showFavSnack(String msg) {
+    if (!mounted) return;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          padding: EdgeInsets.zero,
+          duration: const Duration(seconds: 2),
+          margin: EdgeInsets.fromLTRB(20, 0, 20, 12 + bottomInset),
+          content: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF45060),
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: Text(
+                msg,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 17 / 14,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
   }
 
   @override
@@ -567,12 +663,18 @@ class _MenuScreenState extends State<MenuScreen> {
       _filterIngredients = List<String>.from(init);
     }
     ChildStore.currentId.addListener(_onActiveChildChanged);
+
+    // BARU: mulai memantau perubahan favorit
+    _prevFavs = Set<String>.from(RecipeStore.favorites.value);
+    RecipeStore.favorites.addListener(_onFavoritesChanged);
+
     _loadMenuData();
   }
 
   @override
   void dispose() {
     ChildStore.currentId.removeListener(_onActiveChildChanged);
+    RecipeStore.favorites.removeListener(_onFavoritesChanged); 
     _searchController.dispose();
     super.dispose();
   }
@@ -659,6 +761,57 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
+  // FUNGSI UNTUK TOGGLE FAVORIT DI HALAMAN MENU 
+  Future<void> _toggleFavorite(_MenuData m) async {
+    if (_isTogglingFav || _loadedBabyId == null) return;
+    
+    // 1. Cek status saat ini
+    final favs = Set<String>.from(RecipeStore.favorites.value);
+    final isCurrentlyLiked = favs.contains(m.title);
+    final nextLiked = !isCurrentlyLiked;
+
+    // 2. Update lokal (optimistic) agar ikon langsung berubah
+    if (nextLiked) {
+      favs.add(m.title);
+    } else {
+      favs.remove(m.title);
+    }
+    RecipeStore.favorites.value = favs;
+    setState(() => _isTogglingFav = true);
+
+    try {
+      // 3. Tembak API
+      if (nextLiked) {
+        await ApiClient.post(
+          '/collection',
+          data: {
+            'recipeId': m.id,
+            'babyId': _loadedBabyId,
+          },
+        );
+      } else {
+        await ApiClient.delete('/collection/${m.id}?babyId=$_loadedBabyId');
+      }
+    } catch (e) {
+      // 4. Jika gagal, batalkan perubahan ikon (rollback)
+      if (nextLiked) {
+        favs.remove(m.title);
+      } else {
+        favs.add(m.title);
+      }
+      RecipeStore.favorites.value = favs;
+      
+      // Tampilkan pesan error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memperbarui koleksi: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isTogglingFav = false);
+    }
+  }
+
   Widget _tap(VoidCallback onTap, Widget child) => GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
@@ -666,6 +819,7 @@ class _MenuScreenState extends State<MenuScreen> {
       );
 
   Widget _card(_MenuData m, {bool border = true}) => MenuRecommendationCard(
+        recipeId: m.id, // Pastikan ID dimasukkan
         title: m.title,
         imagePath: m.imagePath,
         badge: m.badge,
@@ -772,7 +926,6 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
           ),
           
-          // 👇 LAYOUT PROFIL (TIDAK DIUBAH, HANYA DATANYA SEKARANG IKUT HOME) 👇
           Positioned(
             top: topPad + 20,
             left: 20,
@@ -785,7 +938,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     width: 50,
                     height: 50,
                     decoration: const BoxDecoration(
-                      color: Color(0xFFFCEBD5), // Warna Peach (bgPeach)
+                      color: Color(0xFFFCEBD5),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -794,7 +947,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF9E5665), // Warna Teks Brown
+                          color: Color(0xFF9E5665),
                         ),
                       ),
                     ),
@@ -820,7 +973,6 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
             ),
           ),
-          // 👆 BATAS LAYOUT PROFIL 👆
 
           Positioned(
             top: topPad + context.w(106),

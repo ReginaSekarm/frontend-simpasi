@@ -218,14 +218,47 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
     }
   }
 
+  // PERUBAHAN SNACKBAR DI SINI 
   void _snack(String msg) {
     if (!mounted) return;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          padding: EdgeInsets.zero,
+          duration: const Duration(seconds: 2),
+          margin: EdgeInsets.fromLTRB(20, 0, 20, 12 + bottomInset),
+          content: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF45060), 
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: Text(
+                msg,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 17 / 14,
+                ),
+              ),
+            ),
+          ),
+        ),
       );
   }
+  // 👆 BATAS PERUBAHAN SNACKBAR 👆
 
   int? _parseId(dynamic raw) {
     if (raw == null) return null;
@@ -618,6 +651,10 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
     // Update ikon dulu (optimistic), dibatalkan jika gagal
     _setFavoriteLocal(nextLiked);
 
+    // snackbar langsung muncul saat hati ditekan,
+    //    tidak menunggu proses ke server selesai
+    _snack(nextLiked ? 'Resep disimpan ke koleksi' : 'Resep dihapus dari koleksi');
+
     try {
       int? id = _resolvedRecipeId;
       id ??= await _findRecipeIdByTitle(_data.title);
@@ -642,13 +679,11 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
             if (activeBabyId != null) 'babyId': activeBabyId,
           },
         );
-        _snack('Resep disimpan ke koleksi');
       } else {
         final deleteEndpoint = activeBabyId != null
             ? '/collection/$id?babyId=$activeBabyId'
             : '/collection/$id';
         await ApiClient.delete(deleteEndpoint);
-        _snack('Resep dihapus dari koleksi');
       }
     } on ApiException catch (e) {
       debugPrint('[DetailResep] ApiException: ${e.message}');

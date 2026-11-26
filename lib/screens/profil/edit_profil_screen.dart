@@ -97,6 +97,8 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
 
     final nama = _namaC.text.trim();
     final email = _emailC.text.trim();
+    
+    // Bersihkan HP dari spasi dan strip
     final hp = _hpC.text.replaceAll(RegExp(r'[\s-]'), '');
     final digitHp = hp.replaceAll('+', '');
 
@@ -117,6 +119,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
       emailErr = 'Format email tidak valid. Periksa lagi lalu masukkan ulang.';
     }
 
+    // VALIDASI NO HP (MINIMAL 10 DIGIT)
     if (hp.isEmpty) {
       hpErr = 'Nomor HP wajib diisi.';
     } else if (!RegExp(r'^\+?\d+$').hasMatch(hp)) {
@@ -171,13 +174,11 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
   Future<void> _onBackPressed() async {
     if (_saving) return;
 
-    // Jika tidak ada perubahan, langsung kembali
     if (!_hasChanges) {
       Navigator.of(context).pop();
       return;
     }
 
-    // Jika ada perubahan, munculkan popup custom sesuai Figma
     final confirm = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -186,10 +187,10 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
         elevation: 0,
         insetPadding: EdgeInsets.zero,
         child: Container(
-          width: context.w(350), // Lebar luar sesuai Figma
+          width: context.w(350),
           padding: EdgeInsets.symmetric(
-            horizontal: context.w(31.5), // (350 - 287) / 2 = 31.5
-            vertical: context.w(30.24), // (190.42 - 129.95) / 2 = 30.235
+            horizontal: context.w(31.5),
+            vertical: context.w(30.24),
           ),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -198,7 +199,6 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Judul
               Text(
                 'Batalkan Perubahan?',
                 textAlign: TextAlign.center,
@@ -209,9 +209,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                   height: 24 / 19.95,
                 ),
               ),
-              SizedBox(height: context.w(11)), // Gap sesuai Figma
-
-              // Deskripsi
+              SizedBox(height: context.w(11)),
               Text(
                 'Perubahan yang belum disimpan akan hilang.\nYakin ingin membatalkan?',
                 textAlign: TextAlign.center,
@@ -222,13 +220,10 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                   height: 16 / 13.3,
                 ),
               ),
-              SizedBox(height: context.w(11)), // Gap sesuai Figma
-
-              // Tombol Aksi
+              SizedBox(height: context.w(11)),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Tombol Tetap di sini
                   GestureDetector(
                     onTap: () => Navigator.pop(ctx, false),
                     child: Container(
@@ -250,8 +245,6 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                       ),
                     ),
                   ),
-
-                  // Tombol Ya, Batalkan
                   GestureDetector(
                     onTap: () => Navigator.pop(ctx, true),
                     child: Container(
@@ -289,6 +282,11 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
   @override
   Widget build(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
+    
+    // LOGIKA TOMBOL SIMPAN 
+    // Tombol hanya bisa ditekan jika ada perubahan, tidak sedang loading, dan TIDAK ADA error pada form
+    final bool isFormValid = _emailError == null && _hpError == null;
+    final bool canSave = _hasChanges && !_saving && isFormValid;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -305,7 +303,6 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
               height: context.w(40),
               child: Stack(
                 children: [
-                  // Back arrow
                   Positioned(
                     left: 0,
                     top: 0,
@@ -323,7 +320,6 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                       ),
                     ),
                   ),
-                  // Title
                   Center(
                     child: Text(
                       'Edit Profil',
@@ -398,7 +394,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                     controller: _namaC,
                     errorText: _namaError,
                     onChanged: (_) {
-                      if (_namaError != null) _namaError = null;
+                      if (_namaError != null) setState(() => _namaError = null);
                       _checkChanges();
                     },
                   ),
@@ -412,8 +408,16 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                     controller: _emailC,
                     keyboardType: TextInputType.emailAddress,
                     errorText: _emailError,
-                    onChanged: (_) {
-                      if (_emailError != null) _emailError = null;
+                    onChanged: (val) {
+                      setState(() {
+                        if (val.trim().isEmpty) {
+                          _emailError = null;
+                        } else if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(val)) {
+                          _emailError = 'Format email tidak valid. Periksa lagi lalu masukkan ulang.';
+                        } else {
+                          _emailError = null;
+                        }
+                      });
                       _checkChanges();
                     },
                   ),
@@ -427,8 +431,22 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                     controller: _hpC,
                     keyboardType: TextInputType.phone,
                     errorText: _hpError,
-                    onChanged: (_) {
-                      if (_hpError != null) _hpError = null;
+                    onChanged: (val) {
+                      setState(() {
+                        // Bersihkan spasi dan strip (jika user ngetik 0812-345)
+                        final cleaned = val.replaceAll(RegExp(r'[\s-]'), '');
+                        final digitOnly = cleaned.replaceAll('+', '');
+                        
+                        if (cleaned.isEmpty) {
+                          _hpError = null;
+                        } else if (!RegExp(r'^\+?\d+$').hasMatch(cleaned)) {
+                          _hpError = 'Nomor HP hanya boleh berisi angka.';
+                        } else if (digitOnly.length < 10) {
+                          _hpError = 'Nomor HP minimal 10 digit.';
+                        } else {
+                          _hpError = null;
+                        }
+                      });
                       _checkChanges();
                     },
                   ),
@@ -448,13 +466,15 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
               MediaQuery.of(context).padding.bottom + context.w(24),
             ),
             child: GestureDetector(
-              onTap: (_hasChanges && !_saving) ? _simpan : null,
+              // Hanya bisa ditekan jika 'canSave' bernilai true
+              onTap: canSave ? _simpan : null,
               behavior: HitTestBehavior.opaque,
               child: Container(
                 height: context.w(60),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: _hasChanges ? primaryOrange : disabledBtn,
+                  // Warna berubah jadi abu-abu jika tidak valid
+                  color: canSave ? primaryOrange : disabledBtn,
                   borderRadius: BorderRadius.circular(context.w(15)),
                 ),
                 child: _saving
@@ -517,7 +537,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
           decoration: BoxDecoration(
             color: inputBg,
             border: Border.all(
-              color: hasError ? errorRed : textBlack,
+              color: hasError ? errorRed : textBlack, // Border merah jika error
               width: context.w(1),
             ),
             borderRadius: BorderRadius.circular(context.w(10)),
