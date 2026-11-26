@@ -96,17 +96,43 @@ class MenuRecommendationCard extends StatelessWidget {
       }
       RecipeStore.favorites.value = reverted;
 
-      if (context.mounted) {
+            if (context.mounted) {
+        final bottomInset = MediaQuery.of(context).padding.bottom;
+
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
-              content: Text(
-                e.message.isNotEmpty
-                    ? e.message
-                    : 'Gagal memperbarui koleksi resep',
-              ),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              padding: EdgeInsets.zero,
               duration: const Duration(seconds: 2),
+              margin: EdgeInsets.fromLTRB(20, 0, 20, 12 + bottomInset),
+              content: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF45060),
+                    borderRadius: BorderRadius.circular(17),
+                  ),
+                  child: Text(
+                    e.message.isNotEmpty
+                        ? e.message
+                        : 'Gagal memperbarui koleksi resep',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      height: 17 / 14,
+                    ),
+                  ),
+                ),
+              ),
             ),
           );
       }
