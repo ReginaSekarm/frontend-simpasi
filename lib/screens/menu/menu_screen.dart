@@ -109,6 +109,11 @@ class _MenuScreenState extends State<MenuScreen> {
   String _ibuName = 'Aisyah';
   bool _isLoading = true;
 
+  // ID anak yang datanya sedang ditampilkan (untuk deteksi ganti anak)
+  int? _loadedBabyId;
+  // Penanda request terbaru, supaya respons lama tidak menimpa yang baru
+  int _loadToken = 0;
+
   String _filterAge = 'Semua';
   List<String> _filterIngredients = [];
   final TextEditingController _searchController = TextEditingController();
@@ -158,6 +163,88 @@ class _MenuScreenState extends State<MenuScreen> {
     return '$s Bulan';
   }
 
+  int? _hitungBulanUsia(dynamic rawBirthDate) {
+    if (rawBirthDate == null) return null;
+    final str = rawBirthDate.toString().trim();
+    if (str.isEmpty) return null;
+
+    DateTime? birthDate;
+    if (str.contains('/')) {
+      final parts = str.split('/');
+      if (parts.length == 3) {
+        final d = int.tryParse(parts[0]);
+        final m = int.tryParse(parts[1]);
+        final y = int.tryParse(parts[2]);
+        if (d != null && m != null && y != null) {
+          birthDate = DateTime(y, m, d);
+        }
+      }
+    } else {
+      birthDate = DateTime.tryParse(str);
+    }
+
+    if (birthDate == null) return null;
+    final now = DateTime.now();
+    if (birthDate.isAfter(now)) return null;
+
+    int months = (now.year - birthDate.year) * 12 + (now.month - birthDate.month);
+    if (now.day < birthDate.day) months--;
+    return months < 0 ? 0 : months;
+  }
+
+  bool _matchesAgeCategory(String rawCategory, int? months) {
+    if (months == null) return true;
+    final cat = rawCategory.trim().toLowerCase();
+    if (cat.isEmpty) return true;
+    if (months == 6) {
+      return cat == '6' || cat.contains('6');
+    }
+    if (months >= 7 && months <= 8) {
+      return cat == '7-8' ||
+          cat == '7' ||
+          cat == '8' ||
+          cat.contains('7 - 8') ||
+          cat.contains('7-8');
+    }
+    if (months >= 9 && months <= 11) {
+      return cat == '9-11' || cat.contains('9 - 11') || cat.contains('9-11');
+    }
+    if (months >= 12) {
+      return cat == '12+' || cat.contains('12');
+    }
+    return true;
+  }
+
+  String _pickRecipeImage(Map<String, dynamic> r, [String title = '']) {
+    for (final key in [
+      'photo_url',
+      'photoUrl',
+      'image_url',
+      'imageUrl',
+      'image_path',
+      'imagePath',
+    ]) {
+      final val = (r[key] ?? '').toString().trim();
+      if (val.isNotEmpty) return val;
+    }
+    if (title.toLowerCase().contains('tahu ayam wortel')) {
+      return 'assets/images/tahu-ayam-wortel.png';
+    }
+    if (title.toLowerCase().contains('pepaya')) {
+      return 'assets/images/pepaya-lumat.png';
+    }
+    if (title.toLowerCase().contains('ubi')) {
+      return 'assets/images/kue-ubi-keju.png';
+    }
+    if (title.toLowerCase().contains('pisang')) {
+      return 'assets/images/telur-santan-pisang.png';
+    }
+    if (title.toLowerCase().contains('potato')) {
+      return 'assets/images/egg-potato-mash.png';
+    }
+    return 'assets/images/bubur-hati-ayam.png';
+  }
+
   List<String> _extractIngredients(Map<String, dynamic> map) {
     final raw = map['ingredients'] ??
         map['ingredient_categories'] ??
@@ -180,44 +267,160 @@ class _MenuScreenState extends State<MenuScreen> {
     return const [];
   }
 
-  _MenuData _mapRecipe(Map<String, dynamic> map) {
-    final id = _parseId(map['id'] ?? map['recipe_id'] ?? map['recipeId']);
-    final title =
-        (map['title'] ?? map['name'] ?? map['nama_menu'] ?? 'Menu MPASI')
-            .toString()
-            .trim();
-    final imagePath = (map['image_url'] ??
-            map['imageUrl'] ??
-            map['imagePath'] ??
-            map['photo_url'] ??
-            'assets/images/bubur-hati-ayam.png')
+  _MenuData _mapRecipe(Map<String, dynamic> map, {String? overrideBadge}) {
+    final nestedRecipe = map['recipe'] is Map
+        ? Map<String, dynamic>.from(map['recipe'] as Map)
+        : (map['Recipe'] is Map
+            ? Map<String, dynamic>.from(map['Recipe'] as Map)
+            : <String, dynamic>{});
+
+    final id = _parseId(
+      map['id'] ??
+          map['recipe_id'] ??
+          map['recipeId'] ??
+          nestedRecipe['id'] ??
+          nestedRecipe['recipe_id'],
+    );
+    final title = (map['title'] ??
+            map['name'] ??
+            map['nama_menu'] ??
+            nestedRecipe['title'] ??
+            nestedRecipe['name'] ??
+            'Menu MPASI')
         .toString()
         .trim();
-    final badge = _formatBadge(
-      map['age_category'] ?? map['ageCategory'] ?? map['badge'],
+    final imagePath = _pickRecipeImage(
+      map.isNotEmpty ? map : nestedRecipe,
+      title,
     );
-    final ingredients = _extractIngredients(map);
-    final isNew = map['is_new'] == true || map['isNew'] == true;
+    final badge = overrideBadge ??
+        _formatBadge(
+          map['age_category'] ??
+              map['ageCategory'] ??
+              map['badge'] ??
+              nestedRecipe['age_category'] ??
+              nestedRecipe['badge'],
+        );
+    final ingredients = _extractIngredients(
+      map.containsKey('ingredients') || map.containsKey('bahan')
+          ? map
+          : nestedRecipe,
+    );
+    final isNew = map['is_new'] == true ||
+        map['isNew'] == true ||
+        nestedRecipe['is_new'] == true;
 
     return _MenuData(
       id: id,
       title: title,
-      imagePath:
-          imagePath.isEmpty ? 'assets/images/bubur-hati-ayam.png' : imagePath,
+      imagePath: imagePath,
       badge: badge,
       ingredients: ingredients,
       isNew: isNew,
     );
   }
 
+  List<_MenuData> _parseRecipeList(dynamic rawList, {String? overrideBadge}) {
+    if (rawList is! List) return const [];
+    final parsed = <_MenuData>[];
+    for (final item in rawList) {
+      if (item is Map) {
+        parsed.add(
+          _mapRecipe(Map<String, dynamic>.from(item), overrideBadge: overrideBadge),
+        );
+      }
+    }
+    return parsed;
+  }
+
+  Future<List<_MenuData>> _fetchRecipesByAgeFallback(
+    int? months,
+    String defaultBadge,
+    List<_MenuData> currentAllMenus,
+  ) async {
+    try {
+      final recipesRes = await ApiClient.get('/recipes');
+      final rawList = recipesRes['data'];
+      if (rawList is List && rawList.isNotEmpty) {
+        final results = <_MenuData>[];
+        for (final item in rawList) {
+          if (item is! Map) continue;
+          final r = Map<String, dynamic>.from(item);
+          final title = (r['title'] ?? r['name'] ?? '').toString().trim();
+          if (title.isEmpty) continue;
+          final rawCat =
+              (r['age_category'] ?? r['ageCategory'] ?? r['badge'] ?? '')
+                  .toString();
+          if (!_matchesAgeCategory(rawCat, months)) continue;
+
+          final badge = rawCat.trim().isNotEmpty
+              ? _formatBadge(rawCat)
+              : defaultBadge;
+          results.add(_mapRecipe(r, overrideBadge: badge));
+        }
+        if (results.isNotEmpty) return results;
+      }
+    } catch (_) {
+      // Lanjut ke fallback lokal jika request gagal
+    }
+
+    if (months != null) {
+      final localAgeMatch = currentAllMenus
+          .where((m) => _matchesAgeCategory(m.badge, months))
+          .toList();
+      if (localAgeMatch.isNotEmpty) return localAgeMatch;
+    }
+
+    return const [];
+  }
+
+  // Pilih anak aktif: prioritas ID, lalu nama persis, terakhir anak pertama.
+  Map<String, dynamic>? _pickActiveBaby(List rawBabies) {
+    final targetId = ChildStore.currentId.value;
+    final targetName = ChildStore.currentName.value.trim().toLowerCase();
+
+    final babies = <Map<String, dynamic>>[];
+    for (final b in rawBabies) {
+      if (b is Map) babies.add(Map<String, dynamic>.from(b));
+    }
+    if (babies.isEmpty) return null;
+
+    if (targetId != null) {
+      for (final b in babies) {
+        final bId = _parseId(
+          b['id'] ?? b['baby_id'] ?? b['babyId'] ?? b['child_id'],
+        );
+        if (bId == targetId) return b;
+      }
+    }
+
+    if (targetName.isNotEmpty) {
+      for (final b in babies) {
+        final bName = (b['full_name'] ??
+                b['fullName'] ??
+                b['name'] ??
+                b['nama'] ??
+                '')
+            .toString()
+            .trim()
+            .toLowerCase();
+        if (bName == targetName) return b;
+      }
+    }
+
+    return babies.first;
+  }
+
   Future<void> _loadMenuData() async {
-    setState(() => _isLoading = true);
+    final token = ++_loadToken;
+    if (mounted) setState(() => _isLoading = true);
 
     List<_MenuData> loadedMenus = List<_MenuData>.from(_fallbackMenus);
     List<_MenuData> loadedReco = [];
     String? detectedIbuName;
     int? activeBabyId;
     String? activeBabyName;
+    int? activeBabyMonths;
 
     try {
       final babiesRes = await ApiClient.get('/babies');
@@ -230,40 +433,31 @@ class _MenuScreenState extends State<MenuScreen> {
         if (n != null && n.isNotEmpty) detectedIbuName = n;
       }
 
-      final rawBabies = babiesRes['data'];
+      final rawBabies = babiesRes['data'] ?? babiesRes['babies'];
       if (rawBabies is List && rawBabies.isNotEmpty) {
-        final targetName = ChildStore.currentName.value.trim().toLowerCase();
-        Map<String, dynamic>? chosenBaby;
-
-        for (final b in rawBabies) {
-          if (b is! Map) continue;
-          final bMap = Map<String, dynamic>.from(b);
-          final bName =
-              (bMap['full_name'] ?? bMap['fullName'] ?? bMap['nama'] ?? '')
-                  .toString()
-                  .trim()
-                  .toLowerCase();
-          if (targetName.isNotEmpty && bName == targetName) {
-            chosenBaby = bMap;
-            break;
-          }
-        }
-        chosenBaby ??= rawBabies.first is Map
-            ? Map<String, dynamic>.from(rawBabies.first as Map)
-            : null;
+        final chosenBaby = _pickActiveBaby(rawBabies);
 
         if (chosenBaby != null) {
           activeBabyId = _parseId(
-            chosenBaby['id'] ?? chosenBaby['baby_id'] ?? chosenBaby['babyId'],
+            chosenBaby['id'] ??
+                chosenBaby['baby_id'] ??
+                chosenBaby['babyId'] ??
+                chosenBaby['child_id'],
           );
           final bNama = (chosenBaby['full_name'] ??
                   chosenBaby['fullName'] ??
+                  chosenBaby['name'] ??
                   chosenBaby['nama'])
               ?.toString()
               .trim();
           if (bNama != null && bNama.isNotEmpty) {
             activeBabyName = bNama;
           }
+          activeBabyMonths = _hitungBulanUsia(
+            chosenBaby['birth_date'] ??
+                chosenBaby['birthDate'] ??
+                chosenBaby['tanggalLahir'],
+          );
           if (detectedIbuName == null) {
             final pName =
                 (chosenBaby['parent_name'] ?? chosenBaby['parentName'])
@@ -277,48 +471,79 @@ class _MenuScreenState extends State<MenuScreen> {
       // Abaikan jika gagal mengambil data anak, tetap lanjut muat resep
     }
 
+    debugPrint('[MenuScreen] babyId=$activeBabyId name=$activeBabyName '
+        'months=$activeBabyMonths storeId=${ChildStore.currentId.value}');
+
     try {
       final recipesRes = await ApiClient.get('/recipes');
-      final rawRecipes = recipesRes['data'];
-      if (rawRecipes is List) {
-        final parsed = <_MenuData>[];
-        for (final item in rawRecipes) {
-          if (item is Map) {
-            parsed.add(_mapRecipe(Map<String, dynamic>.from(item)));
-          }
-        }
-        if (parsed.isNotEmpty) {
-          loadedMenus = parsed;
-        }
+      final parsed = _parseRecipeList(
+        recipesRes['data'] ?? recipesRes['recipes'] ?? recipesRes['items'],
+      );
+      if (parsed.isNotEmpty) {
+        loadedMenus = parsed;
       }
     } on ApiException {
       // Pertahankan fallback jika endpoint /recipes gagal
     }
 
+    final defaultBadge = activeBabyMonths != null && activeBabyMonths < 12
+        ? '$activeBabyMonths Bulan'
+        : 'MPASI';
+
     if (activeBabyId != null) {
       try {
         final recoRes =
-            await ApiClient.get('/babies/$activeBabyId/recommendations');
-        final rawReco = recoRes['data'];
-        if (rawReco is List) {
-          final parsedReco = <_MenuData>[];
-          for (final item in rawReco) {
-            if (item is Map) {
-              parsedReco.add(_mapRecipe(Map<String, dynamic>.from(item)));
-            }
-          }
-          loadedReco = parsedReco;
+            await ApiClient.get('/babies/$activeBabyId/recommendations?limit=10');
+        final info = recoRes['info'] is Map
+            ? Map<String, dynamic>.from(recoRes['info'] as Map)
+            : <String, dynamic>{};
+        final badgeText = info['ageCategory'] != null &&
+                info['ageCategory'].toString().trim().isNotEmpty
+            ? _formatBadge(info['ageCategory'])
+            : defaultBadge;
+
+        loadedReco = _parseRecipeList(
+          recoRes['data'] ?? recoRes['recommendations'],
+          overrideBadge: badgeText,
+        );
+
+        if (loadedReco.isEmpty) {
+          loadedReco = await _fetchRecipesByAgeFallback(
+            activeBabyMonths,
+            badgeText,
+            loadedMenus,
+          );
         }
       } on ApiException {
-        loadedReco = [];
+        loadedReco = await _fetchRecipesByAgeFallback(
+          activeBabyMonths,
+          defaultBadge,
+          loadedMenus,
+        );
       }
+    } else {
+      loadedReco = await _fetchRecipesByAgeFallback(
+        activeBabyMonths,
+        defaultBadge,
+        loadedMenus,
+      );
     }
 
-    if (activeBabyName != null && activeBabyName.isNotEmpty) {
-      ChildStore.setCurrent(activeBabyName);
+    // Ada request yang lebih baru (mis. anak diganti saat loading) -> buang hasil ini
+    if (!mounted || token != _loadToken) return;
+
+    _loadedBabyId = activeBabyId;
+
+    // Jangan menimpa anak aktif yang sudah dipilih di Home.
+    // Isi store hanya jika masih kosong (belum ada anak aktif).
+    if (ChildStore.currentId.value == null && activeBabyId != null) {
+      ChildStore.setCurrent(activeBabyName ?? '', id: activeBabyId);
+    } else if (ChildStore.currentName.value.trim().isEmpty &&
+        activeBabyName != null &&
+        activeBabyName.isNotEmpty) {
+      ChildStore.setCurrent(activeBabyName, id: ChildStore.currentId.value);
     }
 
-    if (!mounted) return;
     setState(() {
       if (detectedIbuName != null && detectedIbuName.isNotEmpty) {
         _ibuName = detectedIbuName;
@@ -330,6 +555,13 @@ class _MenuScreenState extends State<MenuScreen> {
     });
   }
 
+  // Dipanggil saat anak aktif di ChildStore berubah
+  void _onActiveChildChanged() {
+    final newId = ChildStore.currentId.value;
+    if (newId == null || newId == _loadedBabyId) return;
+    _loadMenuData();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -337,11 +569,13 @@ class _MenuScreenState extends State<MenuScreen> {
     if (init != null && init.isNotEmpty) {
       _filterIngredients = List<String>.from(init);
     }
+    ChildStore.currentId.addListener(_onActiveChildChanged);
     _loadMenuData();
   }
 
   @override
   void dispose() {
+    ChildStore.currentId.removeListener(_onActiveChildChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -443,6 +677,7 @@ class _MenuScreenState extends State<MenuScreen> {
         borderColor: textGrey,
         onTap: () => _go(
           DetailResepScreen(
+            recipeId: m.id,
             title: m.title,
             imagePath: m.imagePath,
             badge: m.badge,
@@ -462,14 +697,10 @@ class _MenuScreenState extends State<MenuScreen> {
       body: SizedBox.expand(
         child: Stack(
           children: [
-            // Header Fixed, Pink Card & Grid ikut Scroll
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. HEADER MERAH (DIAM DI ATAS)
                 _buildHeader(context),
-
-                // 2. AREA SCROLL (PINK CARD & GRID)
                 Expanded(
                   child: _isLoading
                       ? const Center(
@@ -501,8 +732,6 @@ class _MenuScreenState extends State<MenuScreen> {
                 ),
               ],
             ),
-
-            // ================= BOTTOM NAV =================
             BottomNav(
               currentIndex: 1,
               onTap: (i) {

@@ -4,6 +4,7 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
+import '../../widgets/child_store.dart';
 import '../../widgets/notification_icon.dart';
 import '../home/home_ibu_screen.dart';
 import '../koleksi/koleksi_screen.dart';
@@ -183,7 +184,26 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   void initState() {
     super.initState();
     _tab = widget.initialTab;
+    _selectedBabyId = ChildStore.currentId.value;
+    _activeChildName = ChildStore.currentName.value;
+    ChildStore.currentId.addListener(_onActiveChildChanged);
     _initData();
+  }
+
+  // Dipanggil saat anak aktif di ChildStore berubah
+  void _onActiveChildChanged() {
+    if (!mounted) return;
+    final newId = ChildStore.currentId.value;
+    if (newId == null || newId == _selectedBabyId) return;
+    _selectedBabyId = newId;
+    _activeChildName = ChildStore.currentName.value;
+    _initData();
+  }
+
+  @override
+  void dispose() {
+    ChildStore.currentId.removeListener(_onActiveChildChanged);
+    super.dispose();
   }
 
   Future<void> _initData() async {
@@ -262,6 +282,23 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     return raw.isNotEmpty ? raw : 'Laki-laki';
   }
 
+  // Ambil list dari berbagai kemungkinan bentuk response backend
+  List? _extractList(dynamic res) {
+    if (res is List) return res;
+    if (res is Map) {
+      const keys = ['data', 'history', 'histories', 'items', 'results', 'rows'];
+      for (final k in keys) {
+        final v = res[k];
+        if (v is List) return v;
+        if (v is Map) {
+          final inner = _extractList(v);
+          if (inner != null) return inner;
+        }
+      }
+    }
+    return null;
+  }
+
   Future<void> _loadAiHistory() async {
     setState(() => _loadingAi = true);
     try {
@@ -274,8 +311,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           ? '/ai/history?babyId=$activeBabyId'
           : '/ai/history';
       final res = await ApiClient.get(endpoint);
-      final rawList = res['data'] ?? res['history'] ?? res['items'];
-      if (rawList is List) {
+      debugPrint('[Riwayat] GET $endpoint -> $res');
+      final rawList = _extractList(res);
+      if (rawList != null) {
         final Map<String, List<PencarianItem>> groupedMap = {};
         final Map<String, String> hariByKey = {};
 
@@ -325,14 +363,20 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 .where((e) => e.isNotEmpty)
                 .toList();
           } else if (rawKw is String && rawKw.trim().isNotEmpty) {
-            keywords = rawKw
-                .split(RegExp(r'[,;\n]+'))
-                .map((e) => e.trim())
-                .where((e) => e.isNotEmpty)
-                .toList();
+            // Query berupa prompt panjang (data lama) bukan daftar bahan
+            if (rawKw.length <= 80) {
+              keywords = rawKw
+                  .split(RegExp(r'[,;\n]+'))
+                  .map((e) => e.trim())
+                  .where((e) => e.isNotEmpty)
+                  .toList();
+            }
           }
           if (keywords.isEmpty) {
-            keywords = ['Rekomendasi AI'];
+            final resp = (map['response'] ?? '').toString();
+            final m = RegExp(r'Nama Menu:\s*(.+)').firstMatch(resp);
+            final menuName = m?.group(1)?.trim() ?? '';
+            keywords = [menuName.isNotEmpty ? menuName : 'Rekomendasi AI'];
           }
 
           int jumlahResep = 0;
@@ -395,12 +439,16 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               .toList();
           setState(() => _pencarian = groups);
         }
+      } else {
+        debugPrint('[Riwayat] Format response /ai/history tidak dikenali');
       }
-    } on ApiException {
+    } on ApiException catch (e) {
+      debugPrint('[Riwayat] ApiException /ai/history: $e');
       if (mounted) {
         setState(() => _pencarian = []);
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[Riwayat] Error /ai/history: $e');
       if (mounted) {
         setState(() => _pencarian = []);
       }
@@ -482,9 +530,22 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         }
 
         if (parsedBabies.isNotEmpty && mounted) {
+          // Prioritas: ID di store, lalu nama, terakhir anak pertama
+          final storeId = ChildStore.currentId.value;
           final activeName = _activeChildName.trim().toLowerCase();
           _BabyOption selectedBaby = parsedBabies.first;
-          if (activeName.isNotEmpty) {
+
+          bool found = false;
+          if (storeId != null) {
+            for (final b in parsedBabies) {
+              if (b.id == storeId) {
+                selectedBaby = b;
+                found = true;
+                break;
+              }
+            }
+          }
+          if (!found && activeName.isNotEmpty) {
             for (final b in parsedBabies) {
               if (b.nama.trim().toLowerCase() == activeName) {
                 selectedBaby = b;
@@ -954,7 +1015,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     final active = _tab == index;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _tab = index),
+        onTap: () {
+          setState(() => _tab = index);
+          // Muat ulang histori AI tiap kali tab Resep AI dibuka
+          if (index == 0) _loadAiHistory();
+        },
         behavior: HitTestBehavior.opaque,
         child: Container(
           alignment: Alignment.centerLeft,

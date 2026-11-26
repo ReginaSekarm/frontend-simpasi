@@ -3,6 +3,9 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../services/comment_service.dart';
+import '../services/user_service.dart';
+
 class GoogleFonts {
   static TextStyle inter({
     double? fontSize,
@@ -23,28 +26,67 @@ class GoogleFonts {
 
 // ================= MODEL KOMENTAR =================
 class KomentarItem {
+  final int? id;
+  final int? userId;
+  final int? parentCommentId;
   final String nama;
   final String? waktu;
   final DateTime? postedAt;
+  final int? ageSeconds;
   String teks;
+  int replyCount;
+  bool repliesLoaded;
   final List<KomentarItem> balasan;
 
   KomentarItem({
+    this.id,
+    this.userId,
+    this.parentCommentId,
     required this.nama,
     this.waktu,
     this.postedAt,
+    this.ageSeconds,
     required this.teks,
+    this.replyCount = 0,
+    this.repliesLoaded = false,
     List<KomentarItem>? balasan,
   }) : balasan = balasan ?? [];
 
-  bool get adaBalasan => balasan.isNotEmpty;
+  bool get adaBalasan => replyCount > 0 || balasan.isNotEmpty;
+
+  static String formatWaktu(DateTime? dt, int? ageSeconds) {
+    int diffSec;
+    if (ageSeconds != null && ageSeconds >= 0) {
+      diffSec = ageSeconds;
+    } else if (dt != null) {
+      diffSec = DateTime.now().difference(dt).inSeconds;
+      if (diffSec < 0) diffSec = 0;
+    } else {
+      return 'Baru saja';
+    }
+
+    if (diffSec < 60) return 'Baru saja';
+    final minutes = diffSec ~/ 60;
+    if (minutes < 60) return '$minutes mnt';
+    final hours = minutes ~/ 60;
+    if (hours < 24) return '$hours jam';
+    final days = hours ~/ 24;
+    return '$days hari';
+  }
 }
 
 // ================= BOTTOM SHEET KOMENTAR =================
 class KomentarSheet extends StatefulWidget {
+  final int? recipeId;
   final String recipeTitle;
+  final String? currentUserName;
 
-  const KomentarSheet({super.key, required this.recipeTitle});
+  const KomentarSheet({
+    super.key,
+    this.recipeId,
+    required this.recipeTitle,
+    this.currentUserName,
+  });
 
   @override
   State<KomentarSheet> createState() => _KomentarSheetState();
@@ -54,11 +96,10 @@ class _KomentarSheetState extends State<KomentarSheet> {
   static const Color primaryRed  = Color(0xFFD45060);
   static const Color textBlack   = Color(0xFF000000);
   static const Color textGrey    = Color(0xFF8F8F8F);
-  static const Color inputBg     = Color(0xFFD9D9D9);
   static const Color dividerGrey = Color(0xFFD9D9D9);
   static const Color blueTag     = Color(0xFF006199);
 
-  static const String myName = 'Aisyah';
+  String _myName = '';
 
   final List<String> _knownNames = ['Siti Amaliah', 'Aisyah', 'Uni', 'Wowo'];
 
@@ -67,52 +108,21 @@ class _KomentarSheetState extends State<KomentarSheet> {
 
   final Set<KomentarItem> _expanded = {};
   KomentarItem? _replyTo;
+  KomentarItem? _replyRoot;
 
-  final List<KomentarItem> _komentar = [
-    KomentarItem(
-      nama: 'Wowo',
-      waktu: '1 hari',
-      postedAt: DateTime.now().subtract(const Duration(days: 1)),
-      teks: 'Sebelum dihaluskan, ubi ungu perlu didiamkan sampai '
-          'dingin dulu atau langsung dihaluskan selagi panas?',
-      balasan: [
-        KomentarItem(
-          nama: 'Siti Amaliah',
-          waktu: '20 jam',
-          postedAt: DateTime.now().subtract(const Duration(hours: 20)),
-          teks: '@Wowo Bisa banget bun, kimpul teksturnya mirip ubi ungu. '
-              'Kukus dulu ya sebelum dihaluskan.',
-        ),
-      ],
-    ),
-    KomentarItem(
-      nama: 'Uni',
-      waktu: '1 hari',
-      postedAt: DateTime.now().subtract(const Duration(days: 1)),
-      teks: 'Dirumah cuma ada kimpul, ubi ungu nya bisa diganti '
-          'kimpul aja ga bun?Tolong dijawab ya',
-      balasan: [
-        KomentarItem(
-          nama: 'Aisyah',
-          waktu: '20 jam',
-          postedAt: DateTime.now().subtract(const Duration(hours: 20)),
-          teks: '@Uni Bisa banget bun, kimpul teksturnya mirip ubi ungu. '
-              'Kukus dulu ya sebelum dihaluskan.',
-        ),
-        KomentarItem(
-          nama: 'Uni',
-          waktu: '18 jam',
-          postedAt: DateTime.now().subtract(const Duration(hours: 18)),
-          teks: '@Aisyah Oke bun, makasih infonya 🙏',
-        ),
-      ],
-    ),
-  ];
+  // Kosong saat belum ada komentar
+  final List<KomentarItem> _komentar = [];
+  bool _isLoading = false;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
-    _expanded.add(_komentar[1]); 
+    _myName = (widget.currentUserName ?? '').trim();
+    if (_myName.isNotEmpty && !_knownNames.contains(_myName)) {
+      _knownNames.add(_myName);
+    }
+    _initData();
   }
 
   @override
@@ -122,9 +132,89 @@ class _KomentarSheetState extends State<KomentarSheet> {
     super.dispose();
   }
 
+  Future<void> _initData() async {
+    if (_myName.isEmpty) {
+      final prof = await UserService.getProfile();
+      if (mounted && prof.profile != null && prof.profile!.fullName.trim().isNotEmpty) {
+        setState(() {
+          _myName = prof.profile!.fullName.trim();
+          if (!_knownNames.contains(_myName)) {
+            _knownNames.add(_myName);
+          }
+        });
+      }
+    }
+    await _loadComments();
+  }
+
+  Future<void> _loadComments() async {
+    final rId = widget.recipeId;
+    if (rId == null) {
+      setState(() {
+        _komentar.clear();
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final res = await CommentService.getComments(rId);
+    if (!mounted) return;
+
+    final loaded = res.comments.map((t) {
+      if (!_knownNames.contains(t.userName)) {
+        _knownNames.add(t.userName);
+      }
+      return KomentarItem(
+        id: t.id,
+        userId: t.userId,
+        nama: t.userName,
+        waktu: KomentarItem.formatWaktu(t.createdAt, t.ageSeconds),
+        postedAt: t.createdAt,
+        ageSeconds: t.ageSeconds,
+        teks: t.content,
+        replyCount: t.replyCount,
+        repliesLoaded: false,
+      );
+    }).toList();
+
+    setState(() {
+      _komentar
+        ..clear()
+        ..addAll(loaded);
+      _isLoading = false;
+    });
+
+    if (res.error != null) {
+      _showSnack(res.error!);
+    }
+  }
+
+  void _showSnack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
+      );
+  }
+
+  KomentarItem? _findRootFor(KomentarItem target) {
+    for (final root in _komentar) {
+      if (root == target) return root;
+      if (root.balasan.contains(target)) return root;
+      for (final sub in root.balasan) {
+        if (sub.balasan.contains(target)) return root;
+      }
+    }
+    return null;
+  }
+
   void _handleReply(KomentarItem target) {
+    final root = _findRootFor(target) ?? target;
     setState(() {
       _replyTo = target;
+      _replyRoot = root;
       _controller.text = '@${target.nama} ';
       _controller.selection = TextSelection.fromPosition(
         TextPosition(offset: _controller.text.length),
@@ -133,54 +223,174 @@ class _KomentarSheetState extends State<KomentarSheet> {
     _focusNode.requestFocus();
   }
 
-  void _kirim() {
+  Future<void> _kirim() async {
+    if (_isSubmitting) return;
     final t = _controller.text.trim();
     if (t.isEmpty) return;
 
-    setState(() {
-      final newKomentar = KomentarItem(
-        nama: myName,
-        waktu: 'Baru saja',
-        postedAt: DateTime.now(),
-        teks: t,
-      );
+    final senderName = _myName.isNotEmpty ? _myName : 'Anda';
+    final target = _replyTo;
+    final root = _replyRoot ?? (target != null ? _findRootFor(target) : null);
 
-      if (_replyTo != null) {
-        _replyTo!.balasan.add(newKomentar);
-        _expanded.add(_replyTo!);
-        
-        for (var root in _komentar) {
-          if (root == _replyTo) {
-          } else if (root.balasan.contains(_replyTo)) {
-            _expanded.add(root);
-          } else {
-            for (var sub in root.balasan) {
-              if (sub.balasan.contains(_replyTo)) {
-                _expanded.add(root);
-                _expanded.add(sub);
-              }
-            }
-          }
+    // Mode lokal jika recipeId belum tersedia
+    if (widget.recipeId == null) {
+      setState(() {
+        final newKomentar = KomentarItem(
+          nama: senderName,
+          waktu: 'Baru saja',
+          postedAt: DateTime.now(),
+          teks: t,
+        );
+
+        if (target != null) {
+          final container = root ?? target;
+          container.balasan.add(newKomentar);
+          container.replyCount = container.balasan.length;
+          container.repliesLoaded = true;
+          _expanded.add(container);
+        } else {
+          _komentar.insert(0, newKomentar);
         }
-      } else {
-        _komentar.insert(0, newKomentar);
+
+        _controller.clear();
+        _replyTo = null;
+        _replyRoot = null;
+      });
+      FocusScope.of(context).unfocus();
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    if (target != null) {
+      // Backend membatasi balasan 1 tingkat ke komentar utama (parentCommentId == null)
+      final parentId = root?.id ?? target.id;
+      if (parentId == null) {
+        setState(() => _isSubmitting = false);
+        _showSnack('ID komentar induk tidak ditemukan.');
+        return;
       }
-      
+
+      final res = await CommentService.replyComment(
+        commentId: parentId,
+        content: t,
+      );
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
+      if (!res.success) {
+        _showSnack(res.error ?? 'Gagal mengirim balasan.');
+        return;
+      }
+
       _controller.clear();
       _replyTo = null;
-    });
+      _replyRoot = null;
+      FocusScope.of(context).unfocus();
 
-    FocusScope.of(context).unfocus();
+      final targetRoot = root ?? target;
+      final freshReplies = await CommentService.getReplies(parentId);
+      if (!mounted) return;
+      setState(() {
+        targetRoot.balasan
+          ..clear()
+          ..addAll(
+            freshReplies.map((r) {
+              if (!_knownNames.contains(r.userName)) {
+                _knownNames.add(r.userName);
+              }
+              return KomentarItem(
+                id: r.id,
+                userId: r.userId,
+                parentCommentId: parentId,
+                nama: r.userName,
+                waktu: KomentarItem.formatWaktu(r.createdAt, r.ageSeconds),
+                postedAt: r.createdAt,
+                ageSeconds: r.ageSeconds,
+                teks: r.content,
+              );
+            }),
+          );
+        targetRoot.replyCount = targetRoot.balasan.length;
+        targetRoot.repliesLoaded = true;
+        _expanded.add(targetRoot);
+      });
+    } else {
+      final res = await CommentService.createComment(
+        recipeId: widget.recipeId!,
+        content: t,
+      );
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
+      if (!res.success) {
+        _showSnack(res.error ?? 'Gagal menambahkan komentar.');
+        return;
+      }
+
+      _controller.clear();
+      _replyTo = null;
+      _replyRoot = null;
+      FocusScope.of(context).unfocus();
+      await _loadComments();
+    }
   }
 
-  void _toggleExpand(KomentarItem item) {
+  Future<void> _toggleExpand(KomentarItem item) async {
+    final willExpand = !_expanded.contains(item);
     setState(() {
-      if (_expanded.contains(item)) {
-        _expanded.remove(item);
-      } else {
+      if (willExpand) {
         _expanded.add(item);
+      } else {
+        _expanded.remove(item);
       }
     });
+
+    if (willExpand && item.id != null && !item.repliesLoaded) {
+      final fetched = await CommentService.getReplies(item.id!);
+      if (!mounted) return;
+      setState(() {
+        item.balasan
+          ..clear()
+          ..addAll(
+            fetched.map((r) {
+              if (!_knownNames.contains(r.userName)) {
+                _knownNames.add(r.userName);
+              }
+              return KomentarItem(
+                id: r.id,
+                userId: r.userId,
+                parentCommentId: item.id,
+                nama: r.userName,
+                waktu: KomentarItem.formatWaktu(r.createdAt, r.ageSeconds),
+                postedAt: r.createdAt,
+                ageSeconds: r.ageSeconds,
+                teks: r.content,
+              );
+            }),
+          );
+        item.repliesLoaded = true;
+        if (item.balasan.isNotEmpty) {
+          item.replyCount = item.balasan.length;
+        }
+      });
+    }
+  }
+
+  bool _isOwnedByCurrentUser(KomentarItem k) {
+    if (_myName.isEmpty) return false;
+    return k.nama.trim().toLowerCase() == _myName.trim().toLowerCase();
+  }
+
+  bool _canEditComment(KomentarItem k) {
+    if (!_isOwnedByCurrentUser(k)) return false;
+    if (k.ageSeconds != null) {
+      return k.ageSeconds! <= 24 * 60 * 60;
+    }
+    if (k.postedAt != null) {
+      return DateTime.now().difference(k.postedAt!).inHours < 24;
+    }
+    return true;
   }
 
   // POPUP HAPUS KOMENTAR (GAYA INSTAGRAM: BLUR + KOMENTAR MENONJOL + MENU HAPUS)
@@ -190,17 +400,14 @@ class _KomentarSheetState extends State<KomentarSheet> {
     final Size screen = MediaQuery.of(context).size;
     final double bottomSafe = MediaQuery.of(context).padding.bottom;
 
-    final bool canEdit = k.nama == myName &&
-        k.postedAt != null &&
-        DateTime.now().difference(k.postedAt!).inHours < 24;
+    final bool canEdit = _canEditComment(k);
 
-    // Posisi komentar yang ditonjolkan (sama dengan posisi aslinya)
     const double pad = 8;
-    final double width = (box.size.width + pad * 2).clamp(0.0, screen.width).toDouble();
-    final double left = (position.dx - pad).clamp(0.0, screen.width - width).toDouble();
+    final double width =
+        (box.size.width + pad * 2).clamp(0.0, screen.width).toDouble();
+    final double left =
+        (position.dx - pad).clamp(0.0, screen.width - width).toDouble();
 
-    // Kalau komentar terlalu dekat dengan bawah layar, geser naik sedikit
-    // supaya menu Hapus tetap terlihat
     final double maxTop = screen.height - bottomSafe - 190;
     double top = position.dy - pad;
     if (top > maxTop) top = maxTop;
@@ -217,7 +424,6 @@ class _KomentarSheetState extends State<KomentarSheet> {
           color: Colors.transparent,
           child: Stack(
             children: [
-              // Latar blur + gelap, ketuk di sini untuk menutup
               Positioned.fill(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
@@ -228,7 +434,6 @@ class _KomentarSheetState extends State<KomentarSheet> {
                   ),
                 ),
               ),
-
               Positioned(
                 left: left,
                 top: top,
@@ -237,7 +442,6 @@ class _KomentarSheetState extends State<KomentarSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Komentar yang dipilih (menonjol)
                     Container(
                       padding: const EdgeInsets.all(pad),
                       decoration: BoxDecoration(
@@ -247,7 +451,6 @@ class _KomentarSheetState extends State<KomentarSheet> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // === AVATAR DI POPUP HAPUS ===
                           Container(
                             width: 35,
                             height: 35,
@@ -256,7 +459,8 @@ class _KomentarSheetState extends State<KomentarSheet> {
                               shape: BoxShape.circle,
                               image: k.nama == 'Siti Amaliah'
                                   ? const DecorationImage(
-                                      image: AssetImage('assets/images/profil-kader.png'), // GANTI PATH INI
+                                      image: AssetImage(
+                                          'assets/images/profil-kader.png'),
                                       fit: BoxFit.cover,
                                     )
                                   : null,
@@ -276,7 +480,8 @@ class _KomentarSheetState extends State<KomentarSheet> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.baseline,
                                   textBaseline: TextBaseline.alphabetic,
                                   children: [
                                     Text(
@@ -336,10 +541,7 @@ class _KomentarSheetState extends State<KomentarSheet> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 10),
-
-                    // Menu: hanya "Hapus"
                     ClipRRect(
                       borderRadius: BorderRadius.circular(20),
                       child: BackdropFilter(
@@ -362,15 +564,27 @@ class _KomentarSheetState extends State<KomentarSheet> {
                             ),
                           ),
                           child: InkWell(
-                            onTap: () {
+                            onTap: () async {
                               Navigator.pop(ctx);
+                              if (k.id != null) {
+                                final res =
+                                    await CommentService.deleteComment(k.id!);
+                                if (!mounted) return;
+                                if (!res.success) {
+                                  _showSnack(
+                                      res.error ?? 'Gagal menghapus komentar.');
+                                  return;
+                                }
+                              }
+                              if (!mounted) return;
                               setState(() {
                                 _hapusKomentarDariList(k);
                               });
                             },
                             borderRadius: BorderRadius.circular(20),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 18),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 18),
                               child: Row(
                                 children: [
                                   SvgPicture.asset(
@@ -420,27 +634,29 @@ class _KomentarSheetState extends State<KomentarSheet> {
   void _hapusKomentarDariList(KomentarItem target) {
     _komentar.removeWhere((element) => element == target);
     for (var item in _komentar) {
+      final before = item.balasan.length;
       item.balasan.removeWhere((element) => element == target);
+      if (item.balasan.length != before) {
+        item.replyCount = item.balasan.length;
+      }
       for (var sub in item.balasan) {
         sub.balasan.removeWhere((element) => element == target);
       }
     }
-    _expanded.remove(target); 
+    _expanded.remove(target);
   }
 
-  // FUNGSI EDIT KOMENTAR DIPERBARUI (GAYA INSTAGRAM)
   void _editKomentar(KomentarItem k) {
     final textController = TextEditingController(text: k.teks);
     final FocusNode editFocusNode = FocusNode();
 
-    // Otomatis fokus ke keyboard saat muncul
     WidgetsBinding.instance.addPostFrameCallback((_) {
       editFocusNode.requestFocus();
     });
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Agar bisa naik saat keyboard muncul
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return Padding(
@@ -457,12 +673,11 @@ class _KomentarSheetState extends State<KomentarSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header (Mengedit balasan & Tombol X)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Mengedit balasan',
+                      'Mengedit komentar',
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
@@ -476,11 +691,9 @@ class _KomentarSheetState extends State<KomentarSheet> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                // Area Input
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // === AVATAR DI EDIT KOMENTAR ===
                     Container(
                       width: 35,
                       height: 35,
@@ -489,7 +702,8 @@ class _KomentarSheetState extends State<KomentarSheet> {
                         shape: BoxShape.circle,
                         image: k.nama == 'Siti Amaliah'
                             ? const DecorationImage(
-                                image: AssetImage('assets/images/foto_siti.png'), // GANTI PATH INI
+                                image:
+                                    AssetImage('assets/images/foto_siti.png'),
                                 fit: BoxFit.cover,
                               )
                             : null,
@@ -504,7 +718,6 @@ class _KomentarSheetState extends State<KomentarSheet> {
                           : null,
                     ),
                     const SizedBox(width: 15),
-                    // Kotak Input
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -512,7 +725,7 @@ class _KomentarSheetState extends State<KomentarSheet> {
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF2F2F2), // Background abu-abu terang
+                          color: const Color(0xFFF2F2F2),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: TextField(
@@ -535,14 +748,29 @@ class _KomentarSheetState extends State<KomentarSheet> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                // Tombol Simpan
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      final updated = textController.text.trim();
+                      if (updated.isEmpty) return;
+
                       Navigator.pop(ctx);
+                      if (k.id != null) {
+                        final res = await CommentService.updateComment(
+                          commentId: k.id!,
+                          content: updated,
+                        );
+                        if (!mounted) return;
+                        if (!res.success) {
+                          _showSnack(
+                              res.error ?? 'Gagal memperbarui komentar.');
+                          return;
+                        }
+                      }
+                      if (!mounted) return;
                       setState(() {
-                        k.teks = textController.text.trim();
+                        k.teks = updated;
                       });
                     },
                     child: Text(
@@ -569,14 +797,11 @@ class _KomentarSheetState extends State<KomentarSheet> {
   Widget _buildCommentText(String text) {
     if (text.startsWith('@')) {
       for (String name in _knownNames) {
-        final tagWithSpace = '@$name '; 
-        
-        if (text.startsWith(tagWithSpace)) {
-          final tag = tagWithSpace.trim(); 
-          final rest = text.substring(tagWithSpace.length); 
+        final tagWithSpace = '@$name ';
 
-          // SEMUA TAG MENJADI BIRU
-          final Color tagColor = blueTag; 
+        if (text.startsWith(tagWithSpace)) {
+          final tag = tagWithSpace.trim();
+          final rest = text.substring(tagWithSpace.length);
 
           return RichText(
             text: TextSpan(
@@ -589,7 +814,7 @@ class _KomentarSheetState extends State<KomentarSheet> {
               children: [
                 TextSpan(
                   text: '$tag ',
-                  style: TextStyle(color: tagColor), 
+                  style: const TextStyle(color: blueTag),
                 ),
                 TextSpan(text: rest),
               ],
@@ -598,7 +823,7 @@ class _KomentarSheetState extends State<KomentarSheet> {
         }
       }
     }
-    
+
     return Text(
       text,
       style: GoogleFonts.inter(
@@ -656,17 +881,38 @@ class _KomentarSheetState extends State<KomentarSheet> {
                 const SizedBox(height: 19),
 
                 Flexible(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (int i = 0; i < _komentar.length; i++) ...[
-                          if (i > 0) const SizedBox(height: 19),
-                          _buildComment(_komentar[i]),
-                        ],
-                      ],
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 28),
+                          child: Center(
+                            child: CircularProgressIndicator(color: primaryRed),
+                          ),
+                        )
+                      : _komentar.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 28),
+                              child: Center(
+                                child: Text(
+                                  'Belum ada komentar',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w400,
+                                    color: textGrey,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  for (int i = 0; i < _komentar.length; i++) ...[
+                                    if (i > 0) const SizedBox(height: 19),
+                                    _buildComment(_komentar[i]),
+                                  ],
+                                ],
+                              ),
+                            ),
                 ),
 
                 const SizedBox(height: 44),
@@ -681,11 +927,11 @@ class _KomentarSheetState extends State<KomentarSheet> {
   }
 
   Widget _buildComment(KomentarItem k) {
-    final isMe = k.nama == myName;
+    final isMe = _isOwnedByCurrentUser(k);
     final isExpanded = _expanded.contains(k);
-    final canEdit = isMe &&
-        k.postedAt != null &&
-        DateTime.now().difference(k.postedAt!).inHours < 24;
+    final canEdit = _canEditComment(k);
+    final displayReplyCount =
+        k.balasan.isNotEmpty ? k.balasan.length : k.replyCount;
 
     return Builder(
       builder: (commentContext) {
@@ -694,7 +940,6 @@ class _KomentarSheetState extends State<KomentarSheet> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // === AVATAR DI DAFTAR KOMENTAR UTAMA ===
               Container(
                 width: 35,
                 height: 35,
@@ -703,7 +948,7 @@ class _KomentarSheetState extends State<KomentarSheet> {
                   shape: BoxShape.circle,
                   image: k.nama == 'Siti Amaliah'
                       ? const DecorationImage(
-                          image: AssetImage('assets/images/profil-kader.png'), 
+                          image: AssetImage('assets/images/profil-kader.png'),
                           fit: BoxFit.cover,
                         )
                       : null,
@@ -748,7 +993,6 @@ class _KomentarSheetState extends State<KomentarSheet> {
                           ),
                         ],
                         if (k.nama == 'Siti Amaliah') ...[
-                          // === BAGIAN YANG DIUBAH: TITIK (DOT) ===
                           const SizedBox(width: 3),
                           SizedBox(
                             width: 6,
@@ -765,7 +1009,6 @@ class _KomentarSheetState extends State<KomentarSheet> {
                             ),
                           ),
                           const SizedBox(width: 3),
-                          // =========================================
                           Text(
                             'Pembuat',
                             style: GoogleFonts.inter(
@@ -821,7 +1064,7 @@ class _KomentarSheetState extends State<KomentarSheet> {
                             ),
                           ),
                         ],
-                        if (k.adaBalasan) ...[
+                        if (displayReplyCount > 0) ...[
                           const SizedBox(width: 27),
                           GestureDetector(
                             onTap: () => _toggleExpand(k),
@@ -831,7 +1074,7 @@ class _KomentarSheetState extends State<KomentarSheet> {
                               child: Text(
                                 isExpanded
                                     ? 'Sembunyikan balasan'
-                                    : 'Lihat balasan (${k.balasan.length})',
+                                    : 'Lihat balasan ($displayReplyCount)',
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -845,7 +1088,7 @@ class _KomentarSheetState extends State<KomentarSheet> {
                       ],
                     ),
 
-                    if (k.adaBalasan && isExpanded) ...[
+                    if (k.balasan.isNotEmpty && isExpanded) ...[
                       const SizedBox(height: 14),
                       Container(
                         padding: const EdgeInsets.only(left: 12),
@@ -878,12 +1121,12 @@ class _KomentarSheetState extends State<KomentarSheet> {
   Widget _buildInput() {
     return Container(
       height: 52,
-      padding: const EdgeInsets.only(left: 24, right: 14), // Padding kiri disesuaikan agar teks agak ke tengah
+      padding: const EdgeInsets.only(left: 24, right: 14),
       decoration: BoxDecoration(
-        color: Colors.white, // Background putih sesuai Figma
+        color: Colors.white,
         borderRadius: BorderRadius.circular(25),
         border: Border.all(
-          color: const Color(0xFFD9D9D9), // Border abu-abu tipis sesuai Figma
+          color: const Color(0xFFD9D9D9),
           width: 1,
         ),
       ),
@@ -906,7 +1149,7 @@ class _KomentarSheetState extends State<KomentarSheet> {
                 hintStyle: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
-                  color: const Color(0xFF8E8E8E), // Warna hint sesuai Figma
+                  color: const Color(0xFF8E8E8E),
                   height: 19 / 16,
                 ),
                 border: InputBorder.none,
@@ -919,19 +1162,28 @@ class _KomentarSheetState extends State<KomentarSheet> {
           ),
           const SizedBox(width: 8),
           GestureDetector(
-            onTap: _kirim,
+            onTap: _isSubmitting ? null : _kirim,
             behavior: HitTestBehavior.opaque,
             child: Padding(
               padding: const EdgeInsets.all(4),
-              child: SvgPicture.asset(
-                'assets/images/paper-plane-outline.svg',
-                width: 20, // Ukuran ikon disesuaikan dengan Figma
-                height: 20,
-                colorFilter: const ColorFilter.mode(
-                  primaryRed,
-                  BlendMode.srcIn,
-                ),
-              ),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: primaryRed,
+                      ),
+                    )
+                  : SvgPicture.asset(
+                      'assets/images/paper-plane-outline.svg',
+                      width: 20,
+                      height: 20,
+                      colorFilter: const ColorFilter.mode(
+                        primaryRed,
+                        BlendMode.srcIn,
+                      ),
+                    ),
             ),
           ),
         ],

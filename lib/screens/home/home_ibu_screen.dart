@@ -11,6 +11,7 @@ import '../../models/child_data.dart';
 import '../../services/user_service.dart';
 import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
+import '../../widgets/child_store.dart';
 import '../../widgets/child_switch_group.dart';
 import '../../widgets/data_menu_dropdown.dart';
 import '../../widgets/hapus_data_dialog.dart';
@@ -55,7 +56,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   String _parentInitial = 'P';
   String _preferredChildName = '';
 
-  // PERUBAHAN 1 (baris 58): tipe generik dilengkapi
   List<Map<String, String>> _recommendedMenus = [];
   String _recommendationMessage = '';
   bool _isLoadingData = false;
@@ -83,9 +83,12 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     return cleaned.characters.first.toUpperCase();
   }
 
+  // Sinkronkan anak aktif ke ChildStore supaya halaman lain
+  // (Menu, Koleksi, Riwayat) ikut memakai anak yang sama.
   void _syncCurrentChild() {
     if (_hasChild) {
       _preferredChildName = _currentChild.nama;
+      ChildStore.setCurrent(_currentChild.nama, id: _currentChildId);
     } else {
       _preferredChildName = '';
     }
@@ -337,15 +340,28 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
         }
 
         if (mounted) {
+          // Prioritas: ID di store, lalu nama pilihan, lalu index sekarang
+          final storeId = ChildStore.currentId.value;
           final preferredName = _preferredChildName.trim().toLowerCase();
+          final storeName = ChildStore.currentName.value.trim().toLowerCase();
+
           int resolvedIndex = _currentChildIndex;
-          if (preferredName.isNotEmpty) {
-            final idx = parsedChildren.indexWhere(
-              (c) => c.nama.trim().toLowerCase() == preferredName,
-            );
-            if (idx >= 0) {
-              resolvedIndex = idx;
+          int foundIndex = -1;
+
+          if (storeId != null) {
+            foundIndex = parsedIds.indexWhere((id) => id == storeId);
+          }
+          if (foundIndex < 0) {
+            final wantedName =
+                preferredName.isNotEmpty ? preferredName : storeName;
+            if (wantedName.isNotEmpty) {
+              foundIndex = parsedChildren.indexWhere(
+                (c) => c.nama.trim().toLowerCase() == wantedName,
+              );
             }
+          }
+          if (foundIndex >= 0) {
+            resolvedIndex = foundIndex;
           }
           if (resolvedIndex >= parsedChildren.length) {
             resolvedIndex = 0;
@@ -417,7 +433,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     return true;
   }
 
-  // PERUBAHAN 2 (sekitar baris 299): tipe kembalian Future dilengkapi
   Future<List<Map<String, String>>> _fetchRecipesByAgeFallback(
     int? months,
     String defaultBadge,
@@ -427,7 +442,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
       final rawList = recipesRes['data'];
       if (rawList is! List) return [];
 
-      // PERUBAHAN 3 (sekitar baris 315): tipe list dilengkapi
       final results = <Map<String, String>>[];
       for (final item in rawList) {
         if (item is! Map) continue;
@@ -484,7 +498,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
           : defaultBadge;
       final rawData = res['data'];
 
-      // PERUBAHAN 4 (sekitar baris 419): tipe list dilengkapi
       final mappedMenus = <Map<String, String>>[];
       if (rawData is List) {
         for (final item in rawData) {
@@ -555,6 +568,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     setState(() {
       _currentChildIndex = (_currentChildIndex + 1) % _children.length;
     });
+    // Memperbarui ChildStore -> Menu, Koleksi, Riwayat ikut berganti anak
     _syncCurrentChild();
     _fetchRecommendationsForCurrentChild();
   }
@@ -811,6 +825,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
       _currentChildIndex = 0;
     });
     _syncCurrentChild();
+    if (!_hasChild) ChildStore.clear();
     await _fetchRecommendationsForCurrentChild();
   }
 

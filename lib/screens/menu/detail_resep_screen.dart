@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../widgets/bottom_nav.dart';
+import '../../widgets/child_store.dart';
 import '../../widgets/recipe_store.dart';
 import '../../widgets/komentar_sheet.dart';
 import '../koleksi/koleksi_screen.dart';
@@ -195,6 +197,10 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
   void initState() {
     super.initState();
     _resolvedRecipeId = widget.recipeId;
+    // Anak aktif diambil dari ChildStore (dipilih di Home)
+    _activeBabyId = ChildStore.currentId.value;
+    _activeChildName = ChildStore.currentName.value;
+
     _data = RecipeDetailData.fromTitle(
       widget.title,
       recipeId: widget.recipeId,
@@ -227,8 +233,18 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
     return int.tryParse(raw.toString());
   }
 
+  // Pilih anak aktif: prioritas ID dari store, lalu nama, terakhir anak pertama.
   Future<int?> _resolveActiveBabyId() async {
+    final storeId = ChildStore.currentId.value;
+    if (storeId != null) {
+      _activeBabyId = storeId;
+      if (_activeChildName.trim().isEmpty) {
+        _activeChildName = ChildStore.currentName.value;
+      }
+      return storeId;
+    }
     if (_activeBabyId != null) return _activeBabyId;
+
     try {
       final resBabies = await ApiClient.get('/babies');
       final rawBabies = resBabies['data'] ?? resBabies['babies'];
@@ -298,9 +314,16 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
         .trim()
         .toLowerCase();
 
-    if (entryBabyId != null && activeBabyId != null) {
-      return entryBabyId == activeBabyId;
+    if (activeBabyId != null) {
+      if (entryBabyId != null) {
+        return entryBabyId == activeBabyId;
+      }
+      if (entryBabyName.isNotEmpty && activeChildName.isNotEmpty) {
+        return entryBabyName == activeChildName.toLowerCase();
+      }
+      return false;
     }
+
     if (entryBabyName.isNotEmpty && activeChildName.isNotEmpty) {
       return entryBabyName == activeChildName.toLowerCase();
     }
@@ -422,12 +445,15 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
     );
   }
 
+  // Cari ID resep lewat judul: cocok persis dulu, baru cocok sebagian.
   Future<int?> _findRecipeIdByTitle(String targetTitle) async {
     final res = await ApiClient.get('/recipes');
     final rawList = res['data'];
     if (rawList is! List) return null;
 
     final cleanTarget = targetTitle.trim().toLowerCase();
+    int? partialMatchId;
+
     for (final item in rawList) {
       if (item is! Map) continue;
       final map = Map<String, dynamic>.from(item);
@@ -436,15 +462,21 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
               .toString()
               .trim()
               .toLowerCase();
-      if (itemTitle == cleanTarget ||
-          itemTitle.contains(cleanTarget) ||
-          cleanTarget.contains(itemTitle)) {
-        final foundId =
-            _parseId(map['id'] ?? map['recipe_id'] ?? map['recipeId']);
-        if (foundId != null) return foundId;
+      if (itemTitle.isEmpty) continue;
+
+      final foundId =
+          _parseId(map['id'] ?? map['recipe_id'] ?? map['recipeId']);
+      if (foundId == null) continue;
+
+      if (itemTitle == cleanTarget) return foundId;
+
+      if (partialMatchId == null &&
+          (itemTitle.contains(cleanTarget) ||
+              cleanTarget.contains(itemTitle))) {
+        partialMatchId = foundId;
       }
     }
-    return null;
+    return partialMatchId;
   }
 
   Future<void> _syncFavoriteStateFromBackend() async {
@@ -565,20 +597,26 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
     }
   }
 
+  // Set status favorit (ikon hati) di store
+  void _setFavoriteLocal(bool liked) {
+    final favs = Set<String>.from(RecipeStore.favorites.value);
+    if (liked) {
+      favs.add(_data.title);
+    } else {
+      favs.remove(_data.title);
+    }
+    RecipeStore.favorites.value = favs;
+  }
+
   Future<void> _toggleFavorite() async {
     if (_isTogglingFav) return;
     _isTogglingFav = true;
 
-    final currentFavs = Set<String>.from(RecipeStore.favorites.value);
-    final currentlyLiked = currentFavs.contains(_data.title);
+    final currentlyLiked = RecipeStore.favorites.value.contains(_data.title);
     final nextLiked = !currentlyLiked;
 
-    if (nextLiked) {
-      currentFavs.add(_data.title);
-    } else {
-      currentFavs.remove(_data.title);
-    }
-    RecipeStore.favorites.value = currentFavs;
+    // Update ikon dulu (optimistic), dibatalkan jika gagal
+    _setFavoriteLocal(nextLiked);
 
     try {
       int? id = _resolvedRecipeId;
@@ -586,11 +624,15 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
       final activeBabyId = await _resolveActiveBabyId();
 
       if (id == null) {
+        _setFavoriteLocal(currentlyLiked);
         _snack('ID resep tidak ditemukan di server');
         return;
       }
 
       _resolvedRecipeId = id;
+
+      debugPrint('[DetailResep] toggle favorite recipeId=$id '
+          'babyId=$activeBabyId liked=$nextLiked');
 
       if (nextLiked) {
         await ApiClient.post(
@@ -609,24 +651,14 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
         _snack('Resep dihapus dari koleksi');
       }
     } on ApiException catch (e) {
-      final reverted = Set<String>.from(RecipeStore.favorites.value);
-      if (currentlyLiked) {
-        reverted.add(_data.title);
-      } else {
-        reverted.remove(_data.title);
-      }
-      RecipeStore.favorites.value = reverted;
+      debugPrint('[DetailResep] ApiException: ${e.message}');
+      _setFavoriteLocal(currentlyLiked);
       _snack(
         e.message.isNotEmpty ? e.message : 'Gagal memperbarui koleksi resep',
       );
-    } catch (_) {
-      final reverted = Set<String>.from(RecipeStore.favorites.value);
-      if (currentlyLiked) {
-        reverted.add(_data.title);
-      } else {
-        reverted.remove(_data.title);
-      }
-      RecipeStore.favorites.value = reverted;
+    } catch (e) {
+      debugPrint('[DetailResep] error: $e');
+      _setFavoriteLocal(currentlyLiked);
       _snack('Terjadi kesalahan saat memperbarui koleksi resep');
     } finally {
       _isTogglingFav = false;
@@ -639,7 +671,10 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.4),
-      builder: (_) => KomentarSheet(recipeTitle: _data.title),
+      builder: (_) => KomentarSheet(
+        recipeId: _resolvedRecipeId ?? _data.recipeId ?? widget.recipeId,
+        recipeTitle: _data.title,
+      ),
     );
   }
 

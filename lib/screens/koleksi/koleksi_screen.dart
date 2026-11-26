@@ -5,6 +5,7 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
+import '../../widgets/child_store.dart';
 import '../../widgets/recipe_store.dart';
 import '../../widgets/notification_icon.dart';
 import '../home/home_ibu_screen.dart';
@@ -70,14 +71,29 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
   int? _activeBabyId;
   String _activeChildName = '';
 
+  // Penanda request terbaru, supaya respons lama tidak menimpa yang baru
+  int _loadToken = 0;
+
   @override
   void initState() {
     super.initState();
+    _activeChildName = ChildStore.currentName.value;
+    ChildStore.currentId.addListener(_onActiveChildChanged);
+    _loadCollection();
+  }
+
+  // Dipanggil saat anak aktif di ChildStore berubah
+  void _onActiveChildChanged() {
+    if (!mounted) return;
+    final newId = ChildStore.currentId.value;
+    if (newId == null || newId == _activeBabyId) return;
+    _activeChildName = ChildStore.currentName.value;
     _loadCollection();
   }
 
   @override
   void dispose() {
+    ChildStore.currentId.removeListener(_onActiveChildChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -97,46 +113,50 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
     return int.tryParse(raw.toString());
   }
 
+  // Pilih anak aktif: prioritas ID dari store, lalu nama, terakhir anak pertama.
   Future<int?> _resolveActiveBabyId() async {
     try {
       final resBabies = await ApiClient.get('/babies');
       final rawBabies = resBabies['data'] ?? resBabies['babies'];
       if (rawBabies is List && rawBabies.isNotEmpty) {
+        final storeId = ChildStore.currentId.value;
         final targetName = _activeChildName.trim().toLowerCase();
+
+        final babies = <Map<String, dynamic>>[];
+        for (final b in rawBabies) {
+          if (b is Map) babies.add(Map<String, dynamic>.from(b));
+        }
+        if (babies.isEmpty) return null;
+
+        int? idOf(Map<String, dynamic> m) =>
+            _parseId(m['id'] ?? m['baby_id'] ?? m['babyId']);
+        String nameOf(Map<String, dynamic> m) =>
+            (m['full_name'] ?? m['fullName'] ?? m['name'] ?? m['nama'] ?? '')
+                .toString()
+                .trim();
+
         Map<String, dynamic>? selectedMap;
 
-        if (targetName.isNotEmpty) {
-          for (final b in rawBabies) {
-            if (b is! Map) continue;
-            final map = Map<String, dynamic>.from(b);
-            final nama = (map['full_name'] ??
-                    map['fullName'] ??
-                    map['name'] ??
-                    map['nama'] ??
-                    '')
-                .toString()
-                .trim()
-                .toLowerCase();
-            if (nama == targetName) {
-              selectedMap = map;
+        if (storeId != null) {
+          for (final m in babies) {
+            if (idOf(m) == storeId) {
+              selectedMap = m;
               break;
             }
           }
         }
+        if (selectedMap == null && targetName.isNotEmpty) {
+          for (final m in babies) {
+            if (nameOf(m).toLowerCase() == targetName) {
+              selectedMap = m;
+              break;
+            }
+          }
+        }
+        selectedMap ??= babies.first;
 
-        selectedMap ??= Map<String, dynamic>.from(rawBabies.first as Map);
-        _activeChildName = (selectedMap['full_name'] ??
-                selectedMap['fullName'] ??
-                selectedMap['name'] ??
-                selectedMap['nama'] ??
-                '')
-            .toString()
-            .trim();
-        return _parseId(
-          selectedMap['id'] ??
-              selectedMap['baby_id'] ??
-              selectedMap['babyId'],
-        );
+        _activeChildName = nameOf(selectedMap);
+        return idOf(selectedMap);
       }
     } catch (_) {
       // Abaikan jika gagal mengambil daftar anak
@@ -184,9 +204,11 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
   }
 
   Future<void> _loadCollection() async {
+    final token = ++_loadToken;
     setState(() => _isLoading = true);
     try {
       final activeBabyId = await _resolveActiveBabyId();
+      if (!mounted || token != _loadToken) return;
       _activeBabyId = activeBabyId;
       final activeChildName = _activeChildName.trim();
 
@@ -194,6 +216,8 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
           ? '/collection?babyId=$activeBabyId'
           : '/collection';
       final res = await ApiClient.get(endpoint);
+      if (!mounted || token != _loadToken) return;
+
       final rawData = res['data'];
       final List<_KoleksiEntry> loaded = [];
       final Set<String> syncedTitles = {};
@@ -228,15 +252,25 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
               .toString()
               .trim();
 
-          final imagePath = (nestedRecipe['image_url'] ??
-                  nestedRecipe['imageUrl'] ??
-                  nestedRecipe['imagePath'] ??
-                  nestedRecipe['photo_url'] ??
-                  map['image_url'] ??
-                  map['imagePath'] ??
-                  'assets/images/bubur-hati-ayam.png')
-              .toString()
-              .trim();
+String imagePath = '';
+for (final src in [nestedRecipe, map]) {
+  for (final key in [
+    'photo_url',
+    'photoUrl',
+    'image_url',
+    'imageUrl',
+    'image_path',
+    'imagePath',
+  ]) {
+    final v = (src[key] ?? '').toString().trim();
+    if (v.isNotEmpty) {
+      imagePath = v;
+      break;
+    }
+  }
+  if (imagePath.isNotEmpty) break;
+}
+if (imagePath.isEmpty) imagePath = 'assets/images/bubur-hati-ayam.png';
 
           final rawAge = (nestedRecipe['age_category'] ??
                   nestedRecipe['ageCategory'] ??
@@ -281,17 +315,16 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
 
       RecipeStore.favorites.value = syncedTitles;
 
-      if (!mounted) return;
       setState(() {
         _entries = loaded;
         _isLoading = false;
       });
     } on ApiException catch (e) {
-      if (!mounted) return;
+      if (!mounted || token != _loadToken) return;
       setState(() => _isLoading = false);
       _snack(e.message.isNotEmpty ? e.message : 'Gagal memuat koleksi resep');
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || token != _loadToken) return;
       setState(() => _isLoading = false);
       _snack('Terjadi kesalahan saat memuat koleksi resep');
     }
@@ -368,7 +401,7 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
               children: [
                 _buildHeader(context),
                 Expanded(
-                  child: _isLoading && _entries.isEmpty
+                  child: _isLoading
                       ? const Center(
                           child: CircularProgressIndicator(color: primaryRed),
                         )

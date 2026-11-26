@@ -9,13 +9,21 @@ class ChildStore {
   static final ValueNotifier<String> currentName =
       ValueNotifier<String>('');
 
-  /// Set nama anak aktif (dipanggil dari Home saat switch/tambah).
-  static void setCurrent(String name) {
+  /// ID anak yang sedang aktif. Default null.
+  /// Dipakai untuk memilih anak secara akurat (lebih andal daripada nama).
+  static final ValueNotifier<int?> currentId =
+      ValueNotifier<int?>(null);
+
+  /// Set anak aktif (dipanggil dari Home saat switch/tambah).
+  /// Sertakan [id] jika tersedia agar halaman lain memilih anak yang tepat.
+  static void setCurrent(String name, {int? id}) {
     currentName.value = name;
+    currentId.value = id;
   }
 
   /// Reset (misal ketika semua anak dihapus).
   static void clear() {
     currentName.value = '';
+    currentId.value = null;
   }
 }
