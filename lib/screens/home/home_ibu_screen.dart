@@ -47,6 +47,10 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   static const Color textBlack71 = Color(0xB5000000);
   static const Color textBlack50 = Color(0x80000000);
 
+  // 👇 BARU: warna kartu "Mulai dalam 3 langkah"
+  static const Color bgMint = Color(0xFFDDF3F1);
+  static const Color tealDark = Color(0xFF1A7772);
+
   static const String _babiesPath = '/babies';
 
   final List<ChildData> _children = [];
@@ -873,9 +877,20 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHeaderSection(context),
-                  _buildMenuSection(),
-                  SizedBox(height: context.w(20)),
-                  _buildStuntingBanner(),
+
+                  // 👇 DIUBAH: tampilan berbeda saat belum / sudah ada data anak
+                  if (_hasChild) ...[
+                    _buildMenuSection(),
+                    SizedBox(height: context.w(20)),
+                    _buildStuntingBanner(),
+                  ] else ...[
+                    // Belum ada data anak (Figma: home-blm isi data)
+                    SizedBox(height: context.w(29)),
+                    _buildStuntingBanner(empty: true),
+                    SizedBox(height: context.w(18)),
+                    _buildStepsCard(),
+                  ],
+
                   SizedBox(height: context.w(90) + bottomPad),
                 ],
               ),
@@ -978,8 +993,16 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   Widget _buildHeaderSection(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
 
+    // 👇 DIUBAH: ukuran header & posisi kartu berbeda saat belum ada data anak.
+    // Figma (belum ada data): header merah berakhir di y=160, kartu y=138..373.
+    // Dihitung relatif terhadap status bar (±39px di Figma):
+    //   header = topPad + 121, kartu = topPad + 99, total section = topPad + 334.
+    final redHeight = topPad + context.w(_hasChild ? 170 : 121);
+    final cardTop = topPad + context.w(_hasChild ? 116 : 99);
+    final sectionHeight = topPad + context.w(_hasChild ? 286 : 334);
+
     return SizedBox(
-      height: topPad + context.w(286),
+      height: sectionHeight,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -988,7 +1011,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
             left: 0,
             right: 0,
             child: Container(
-              height: topPad + context.w(170),
+              height: redHeight,
               decoration: BoxDecoration(
                 color: primaryRed,
                 borderRadius: BorderRadius.only(
@@ -1051,7 +1074,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
           ),
 
           Positioned(
-            top: topPad + context.w(116),
+            top: cardTop,
             left: context.w(26),
             right: context.w(26),
             child: _hasChild
@@ -1092,6 +1115,9 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
+  // ================= KARTU "TAMBAH DATA ANAK" (belum ada data) =================
+  // Figma: 337 x 235, radius 30, plus 52.15 (alpha .8), judul 14 w600,
+  // deskripsi 13/16 selebar 284 rata tengah.
   Widget _buildEmptyStateCard() {
     return Material(
       color: bgPeach,
@@ -1100,17 +1126,17 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
         borderRadius: BorderRadius.circular(context.w(30)),
         onTap: _openTambahAnak,
         child: SizedBox(
-          height: context.w(170),
+          height: context.w(235),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              SizedBox(height: context.w(42)),
               SvgPicture.asset(
                 'assets/images/plus.svg',
-                width: context.w(60),
-                height: context.w(60),
+                width: context.w(52.15),
+                height: context.w(52.15),
                 fit: BoxFit.contain,
-                colorFilter: const ColorFilter.mode(
-                  primaryRed,
+                colorFilter: ColorFilter.mode(
+                  primaryRed.withValues(alpha: 0.8),
                   BlendMode.srcIn,
                 ),
               ),
@@ -1118,10 +1144,24 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
               Text(
                 'Tambah Data Anak',
                 style: google_fonts.GoogleFonts.inter(
-                  fontSize: context.sp(18),
-                  fontWeight: FontWeight.w700,
-                  color: textBlack.withValues(alpha: 0.7),
-                  height: 22 / 18,
+                  fontSize: context.sp(14),
+                  fontWeight: FontWeight.w600,
+                  color: textBlack71,
+                  height: 17 / 14,
+                ),
+              ),
+              SizedBox(height: context.w(11)),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: context.w(26.5)),
+                child: Text(
+                  'Belum ada data anak. Tambahkan data si kecil untuk mulai memantau tinggi, berat, lingkar kepala, LiLA, dan risiko stunting.',
+                  textAlign: TextAlign.center,
+                  style: google_fonts.GoogleFonts.inter(
+                    fontSize: context.sp(13),
+                    fontWeight: FontWeight.w400,
+                    color: textBlack71,
+                    height: 16 / 13,
+                  ),
                 ),
               ),
             ],
@@ -1425,11 +1465,14 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  Widget _buildStuntingBanner() {
+  // ================= BANNER RIWAYAT PEMERIKSAAN =================
+  // empty = true  -> versi Figma "belum ada data":
+  //   judul "Riwayat pemeriksaan" (lebar 223), tinggi min 168, jarak 16 & 19.
+  Widget _buildStuntingBanner({bool empty = false}) {
     return Container(
       width: double.infinity,
       margin: EdgeInsets.symmetric(horizontal: context.w(37)),
-      constraints: BoxConstraints(minHeight: context.w(160)),
+      constraints: BoxConstraints(minHeight: context.w(empty ? 168 : 160)),
       decoration: BoxDecoration(
         color: bgTeal,
         borderRadius: BorderRadius.circular(context.w(30)),
@@ -1462,9 +1505,11 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  width: context.w(200),
+                  width: context.w(empty ? 223 : 200),
                   child: Text(
-                    'Riwayat pemeriksaan stunting',
+                    empty
+                        ? 'Riwayat pemeriksaan'
+                        : 'Riwayat pemeriksaan stunting',
                     style: google_fonts.GoogleFonts.inter(
                       fontSize: context.sp(16),
                       fontWeight: FontWeight.w700,
@@ -1473,7 +1518,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: context.w(9)),
+                SizedBox(height: context.w(empty ? 16 : 9)),
                 SizedBox(
                   width: context.w(157),
                   child: Text(
@@ -1486,7 +1531,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: context.w(14)),
+                SizedBox(height: context.w(empty ? 19 : 14)),
                 Material(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(context.w(20)),
@@ -1516,6 +1561,99 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // ================= KARTU "MULAI DALAM 3 LANGKAH" (belum ada data) =================
+  // Figma: 317 x 174, radius 20, warna #DDF3F1, judul 16 w600 #1A7772,
+  // 3 baris langkah (lingkaran 22 + teks 12), tiap baris setinggi 35.
+  Widget _buildStepsCard() {
+    TextStyle stepStyle({FontWeight weight = FontWeight.w400}) =>
+        google_fonts.GoogleFonts.inter(
+          fontSize: context.sp(12),
+          fontWeight: weight,
+          color: tealDark,
+        );
+
+    Widget step(String no, List<InlineSpan> spans) {
+      return ConstrainedBox(
+        constraints: BoxConstraints(minHeight: context.w(35)),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: context.w(22),
+              height: context.w(22),
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: tealDark,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                no,
+                style: google_fonts.GoogleFonts.inter(
+                  fontSize: context.sp(12),
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 1.0,
+                ),
+              ),
+            ),
+            SizedBox(width: context.w(4)),
+            Expanded(
+              child: Text.rich(
+                TextSpan(style: stepStyle(), children: spans),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.symmetric(horizontal: context.w(36.5)),
+      constraints: BoxConstraints(minHeight: context.w(174)),
+      padding: EdgeInsets.fromLTRB(
+        context.w(12),
+        context.w(24),
+        context.w(12),
+        context.w(24),
+      ),
+      decoration: BoxDecoration(
+        color: bgMint,
+        borderRadius: BorderRadius.circular(context.w(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(left: context.w(2)),
+            child: Text(
+              'Mulai dalam 3 langkah',
+              style: google_fonts.GoogleFonts.inter(
+                fontSize: context.sp(16),
+                fontWeight: FontWeight.w600,
+                color: tealDark,
+                height: 19 / 16,
+              ),
+            ),
+          ),
+          SizedBox(height: context.w(2)),
+          step('1', const [TextSpan(text: 'Tambah data anak')]),
+          step('2', const [
+            TextSpan(text: 'Isi tinggi dan berat, atau periksa di posyandu'),
+          ]),
+          step('3', [
+            const TextSpan(text: 'Lihat hasil: '),
+            TextSpan(
+              text: 'Cek Detail Riwayat Pemeriksaan',
+              style: stepStyle(weight: FontWeight.w600),
+            ),
+          ]),
         ],
       ),
     );

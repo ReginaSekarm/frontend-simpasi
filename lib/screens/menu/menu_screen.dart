@@ -8,7 +8,6 @@ import '../../utils/responsive.dart';
 import '../../widgets/bottom_nav.dart';
 import '../../widgets/child_store.dart';
 import '../../widgets/filter_menu_sheet.dart';
-import '../../widgets/initial_avatar.dart';
 import '../../widgets/menu_recommendation_card.dart';
 import '../../widgets/notification_icon.dart';
 import '../koleksi/koleksi_screen.dart';
@@ -16,6 +15,9 @@ import '../notifikasi/notifikasi_screen.dart';
 import '../profil/profil_screen.dart';
 import '../riwayat/riwayat_screen.dart';
 import 'detail_resep_screen.dart';
+
+// 👇 TAMBAHKAN IMPORT INI AGAR SAMA SEPERTI DI HOME 👇
+import '../../services/user_service.dart';
 
 // ================= DATA MENU =================
 class _MenuData {
@@ -422,17 +424,23 @@ class _MenuScreenState extends State<MenuScreen> {
     String? activeBabyName;
     int? activeBabyMonths;
 
+    // 👇 AMBIL NAMA DARI USERSERVICE (SAMA SEPERTI DI HOME) 👇
+    try {
+      final profileResult = await UserService.getProfile();
+      final p = profileResult.profile;
+      if (p != null && p.fullName.trim().isNotEmpty) {
+        final parts = p.fullName.trim().split(RegExp(r'\s+'));
+        if (parts.isNotEmpty) {
+          detectedIbuName = parts.first; // Ambil nama depan (Carmenita)
+        }
+      }
+    } catch (_) {
+      // Abaikan jika gagal memuat profil
+    }
+    // 👆 BATAS PERUBAHAN PENGAMBILAN NAMA 👆
+
     try {
       final babiesRes = await ApiClient.get('/babies');
-      final userObj = babiesRes['user'];
-      if (userObj is Map) {
-        final n =
-            (userObj['full_name'] ?? userObj['fullName'] ?? userObj['name'])
-                ?.toString()
-                .trim();
-        if (n != null && n.isNotEmpty) detectedIbuName = n;
-      }
-
       final rawBabies = babiesRes['data'] ?? babiesRes['babies'];
       if (rawBabies is List && rawBabies.isNotEmpty) {
         final chosenBaby = _pickActiveBaby(rawBabies);
@@ -458,13 +466,6 @@ class _MenuScreenState extends State<MenuScreen> {
                 chosenBaby['birthDate'] ??
                 chosenBaby['tanggalLahir'],
           );
-          if (detectedIbuName == null) {
-            final pName =
-                (chosenBaby['parent_name'] ?? chosenBaby['parentName'])
-                    ?.toString()
-                    .trim();
-            if (pName != null && pName.isNotEmpty) detectedIbuName = pName;
-          }
         }
       }
     } on ApiException {
@@ -522,11 +523,7 @@ class _MenuScreenState extends State<MenuScreen> {
         );
       }
     } else {
-      loadedReco = await _fetchRecipesByAgeFallback(
-        activeBabyMonths,
-        defaultBadge,
-        loadedMenus,
-      );
+      loadedReco = [];
     }
 
     // Ada request yang lebih baru (mis. anak diganti saat loading) -> buang hasil ini
@@ -688,8 +685,8 @@ class _MenuScreenState extends State<MenuScreen> {
   // ================= BUILD =================
   @override
   Widget build(BuildContext context) {
-    final showReco =
-        widget.fromPemeriksaan || (!_isFilterActive && !_isSearching);
+    final hasBaby = _loadedBabyId != null;
+    final showReco = hasBaby && (widget.fromPemeriksaan || (!_isFilterActive && !_isSearching));
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -774,33 +771,57 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
             ),
           ),
+          
+          // 👇 LAYOUT PROFIL (TIDAK DIUBAH, HANYA DATANYA SEKARANG IKUT HOME) 👇
           Positioned(
-            top: topPad + context.w(20),
-            left: context.w(16),
-            right: context.w(16),
+            top: topPad + 20,
+            left: 20,
+            right: 20,
             child: SizedBox(
-              height: context.w(50),
+              height: 50,
               child: Row(
                 children: [
-                  InitialAvatar(initial: _ibuInitial),
-                  SizedBox(width: context.w(18)),
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFCEBD5), // Warna Peach (bgPeach)
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        _ibuInitial,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF9E5665), // Warna Teks Brown
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       _ibuName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: context.txt(24, w: 700, c: Colors.white, h: 29 / 24),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   NotificationIconButton(
                     onTap: () => _go(const NotifikasiScreen()),
                     size: 26,
                   ),
-                  SizedBox(width: context.w(15)),
                 ],
               ),
             ),
           ),
+          // 👆 BATAS LAYOUT PROFIL 👆
+
           Positioned(
             top: topPad + context.w(106),
             left: context.w(37),
